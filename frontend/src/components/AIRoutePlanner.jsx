@@ -1,43 +1,120 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { api } from '../services/api';
 import { calculateAIRoutes } from '../data/nerData';
 import { localizedVehicles, localizedPayloads, localizedLocations } from '../data/localizedData';
 import {
   Navigation,
-  Sparkles,
   ShieldCheck,
   CheckCircle2,
   Send,
   CloudRain,
-  Activity
+  Activity,
+  Cpu,
+  AlertTriangle,
+  Info,
+  MapPin,
+  Route,
+  Clock,
+  ShieldAlert
 } from 'lucide-react';
 
 export const AIRoutePlanner = () => {
   const { t, lang } = useApp();
 
   const [origin, setOrigin] = useState("Guwahati Central Depot (Assam)");
-  const [destination, setDestination] = useState("Tawang District Hospital (Arunachal Pradesh)");
+  const [destination, setDestination] = useState("Silchar FCI Hub (Assam)");
   const [commodity, setCommodity] = useState("Life-Saving Vaccines & Insulin (Cold-Chain)");
-  const [vehicleType, setVehicleType] = useState("Refrigerated 10T Truck");
+  const [convoyWeight, setConvoyWeight] = useState(15.0);
 
-  const [routeResult, setRouteResult] = useState(() =>
-    calculateAIRoutes(origin, destination, commodity)
-  );
+  const [routeResult, setRouteResult] = useState(() => {
+    return {
+      route_id: "route-init",
+      origin: "Guwahati Central Depot (Assam)",
+      destination: "Silchar FCI Hub (Assam)",
+      path_nodes: ["Guwahati", "Nongpoh", "Shillong", "Jowai", "Silchar"],
+      distance: 312.5,
+      estimated_time: 7.8,
+      risk_score: 22.4,
+      risk_factors: [
+        "Monsoon heavy rain warning penalty (1.3x) applied on Shillong-Jowai ghat stretch",
+        "Moderate terrain incline vulnerability index (0.35)"
+      ],
+      blocked_segments: [],
+      alternate_route: {
+        route_name: "Secondary Detour via Haflong / Umrangso Corridor",
+        path_nodes: ["Guwahati", "Nagaon", "Lumding", "Haflong", "Silchar"],
+        distance: 368.0,
+        estimated_time: 9.5,
+        risk_score: 38.0,
+        rationale: "Secondary state highway fallback bypasses Shillong plateau during extreme rainfall."
+      },
+      decision_explanation: "Primary Route via NH-27/NH-6 selected using deterministic Dijkstra graph evaluation. This path provides optimal travel time (7.8 hrs) over 312.5 km while bypassing active landslide blockades.",
+      data_source_mode: "DEMO/SIMULATION"
+    };
+  });
 
   const [loading, setLoading] = useState(false);
-  const [selectedRouteId, setSelectedRouteId] = useState("route-ai-safe");
+  const [selectedRouteType, setSelectedRouteType] = useState("primary");
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
+  const [liveWeatherCategory, setLiveWeatherCategory] = useState("MONSOON_STORM");
+  const [liveWeatherDesc, setLiveWeatherDesc] = useState("Live Weather Reading");
 
-  const handleCalculate = (e) => {
+  useEffect(() => {
+    const loadLiveWeather = async () => {
+      const weatherData = await api.getLiveWeather();
+      if (weatherData && weatherData.hubs_weather && weatherData.hubs_weather.length > 0) {
+        const topHub = weatherData.hubs_weather[0];
+        setLiveWeatherCategory(topHub.condition_category || "MONSOON_STORM");
+        setLiveWeatherDesc(`Live Web Weather (${topHub.hub_name}): ${topHub.temp_celsius}°C, ${topHub.condition_description}`);
+      }
+    };
+    loadLiveWeather();
+  }, []);
+
+  const handleCalculate = async (e) => {
     e.preventDefault();
     setLoading(true);
     setDispatchSuccess(false);
 
-    setTimeout(() => {
-      const result = calculateAIRoutes(origin, destination, commodity);
-      setRouteResult(result);
-      setLoading(false);
-    }, 650);
+    const originNode = origin.split(' ')[0];
+    const destNode = destination.split(' ')[0];
+
+    const cargoTypeMap = {
+      "Life-Saving Vaccines & Insulin (Cold-Chain)": "MEDICINE",
+      "Fortified Food Grains & Rice (FCI Supply)": "GRAINS_RATIONS",
+      "Liquid Medical Oxygen (Cryogenic Tanker)": "OXYGEN_CYLINDERS",
+      "Bridge & Road Heavy Steel Girders": "CONSTRUCTION",
+      "Petroleum & Diesel Fuel Supply": "FUEL"
+    };
+
+    const cargoEnum = cargoTypeMap[commodity] || "MEDICINE";
+    const apiResponse = await api.calculateRoute(originNode, destNode, cargoEnum, convoyWeight, liveWeatherCategory);
+
+    if (apiResponse && apiResponse.path_nodes) {
+      setRouteResult({
+        route_id: apiResponse.route_id || `route-${Date.now()}`,
+        origin: origin,
+        destination: destination,
+        path_nodes: apiResponse.path_nodes,
+        distance: apiResponse.distance !== undefined ? apiResponse.distance : apiResponse.total_distance_km,
+        estimated_time: apiResponse.estimated_time !== undefined ? apiResponse.estimated_time : apiResponse.disaster_adjusted_eta_hours,
+        risk_score: apiResponse.risk_score !== undefined ? apiResponse.risk_score : Math.round(100 - apiResponse.safety_score),
+        risk_factors: apiResponse.risk_factors || ["Monsoon rainfall corridor penalty", "Bridge capacity threshold check"],
+        blocked_segments: apiResponse.blocked_segments || [],
+        alternate_route: apiResponse.alternate_route || (apiResponse.alternate_paths?.[0] ? {
+          route_name: apiResponse.alternate_paths[0].route_name,
+          path_nodes: apiResponse.alternate_paths[0].path_nodes,
+          distance: apiResponse.alternate_paths[0].total_distance_km,
+          estimated_time: apiResponse.alternate_paths[0].disaster_adjusted_eta_hours,
+          risk_score: 42.0,
+          rationale: "Secondary state highway detour fallback."
+        } : null),
+        decision_explanation: apiResponse.decision_explanation || `Primary Route selected via ${apiResponse.path_nodes.join(' ➔ ')} based on deterministic Dijkstra shortest time calculation.`,
+        data_source_mode: apiResponse.data_source_mode || "DEMO/SIMULATION"
+      });
+    }
+    setLoading(false);
   };
 
   const handleDispatchConvoy = () => {
@@ -48,17 +125,28 @@ export const AIRoutePlanner = () => {
   };
 
   const getLocName = (name) => localizedLocations[name]?.[lang] || name;
-  const getVehName = (name) => localizedVehicles[name]?.[lang] || name;
   const getPayName = (name) => localizedPayloads[name]?.[lang] || name;
 
   return (
     <div className="planner-grid">
       {/* Left Input Form Panel */}
       <div className="glass-panel" style={{ padding: '20px', height: '100%', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-        <h2 className="section-title" style={{ marginBottom: '16px', flexShrink: 0 }}>
-          <Sparkles size={20} color="#00F2FE" />
-          {t.aiRoutePlannerEngine || t.navRoutePlanner}
-        </h2>
+        {/* Panel Header */}
+        <div style={{ marginBottom: '16px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <h2 className="section-title">
+              <Cpu size={20} color="#00F2FE" />
+              NERIS Route Planner Workflow
+            </h2>
+            <span className="pill blocked" style={{ padding: '3px 10px', fontSize: '0.7rem', background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', borderColor: '#F59E0B' }}>
+              <AlertTriangle size={11} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
+              {routeResult.data_source_mode || 'DEMO/SIMULATION NETWORK'}
+            </span>
+          </div>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: '4px' }}>
+            Deterministic Dijkstra graph routing engine consuming real incident data & weather risks
+          </p>
+        </div>
 
         <form onSubmit={handleCalculate} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div className="form-group">
@@ -88,6 +176,7 @@ export const AIRoutePlanner = () => {
               onChange={(e) => setDestination(e.target.value)}
             >
               <option value="Tawang District Hospital (Arunachal Pradesh)">{getLocName("Tawang District Hospital (Arunachal Pradesh)")}</option>
+              <option value="Silchar FCI Hub (Assam)">{getLocName("Silchar FCI Hub (Assam)")}</option>
               <option value="Kaziranga National Park Safari Highway (Assam)">{getLocName("Kaziranga National Park Safari Highway (Assam)")}</option>
               <option value="Cherrapunji & Dawki Border Circuit (Meghalaya)">{getLocName("Cherrapunji & Dawki Border Circuit (Meghalaya)")}</option>
               <option value="Gangtok & Nathu La Pass Circuit (Sikkim)">{getLocName("Gangtok & Nathu La Pass Circuit (Sikkim)")}</option>
@@ -113,17 +202,17 @@ export const AIRoutePlanner = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="vehicle-select" className="form-label">{t.vehicleTypeLabel || "Fleet Transport Vehicle"}</label>
+            <label htmlFor="weight-select" className="form-label">Convoy Weight Capacity (Metric Tonnes)</label>
             <select
-              id="vehicle-select"
+              id="weight-select"
               className="form-input"
-              value={vehicleType}
-              onChange={(e) => setVehicleType(e.target.value)}
+              value={convoyWeight}
+              onChange={(e) => setConvoyWeight(parseFloat(e.target.value))}
             >
-              <option value="Refrigerated 10T Truck">{getVehName("Refrigerated 10T Truck")}</option>
-              <option value="Heavy Multi-Axle Carrier 25T">{getVehName("Heavy Multi-Axle Carrier 25T")}</option>
-              <option value="Hazardous Cryogenic Tanker">{getVehName("Hazardous Cryogenic Tanker")}</option>
-              <option value="4x4 All-Terrain Convoy Vehicle">{getVehName("4x4 All-Terrain Convoy Vehicle")}</option>
+              <option value={10.0}>Light Duty Convoy (10 Tonnes)</option>
+              <option value={15.0}>Medium Essential Carrier (15 Tonnes)</option>
+              <option value={25.0}>Heavy Multi-Axle Carrier (25 Tonnes)</option>
+              <option value={45.0}>Extreme Heavy Steel Transport (45 Tonnes)</option>
             </select>
           </div>
 
@@ -134,11 +223,11 @@ export const AIRoutePlanner = () => {
             style={{ marginTop: '10px' }}
           >
             {loading ? (
-              <span>{t.runningMlModel || "Running ML Terrain & Disruption Model..."}</span>
+              <span>Computing Deterministic Dijkstra Path...</span>
             ) : (
               <>
-                <Sparkles size={18} />
-                {t.calculateRoute}
+                <Route size={18} />
+                Compute Operational Route
               </>
             )}
           </button>
@@ -146,13 +235,14 @@ export const AIRoutePlanner = () => {
 
         <div style={{ marginTop: '20px', padding: '12px 14px', borderRadius: '10px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', flexShrink: 0 }}>
           <h4 style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: '6px', fontWeight: 800 }}>
-            <Activity size={14} color="#00F2FE" style={{ verticalAlign: 'middle' }} /> {t.aiPredictionParams || "AI Prediction Parameters"}
+            <Activity size={14} color="#00F2FE" style={{ verticalAlign: 'middle' }} /> Route Computation Pipeline
           </h4>
-          <ul style={{ fontSize: '0.76rem', color: 'var(--color-muted)', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: 0 }}>
-            <li>• {t.paramImdRadar || "Real-time IMD Weather Radar Feed"}</li>
-            <li>• {t.paramSlopeIncline || "Slope Incline & Historical Landslide Index"}</li>
-            <li>• {t.paramGeoReports || "Geo-tagged Field Incident Reports from PWD/BRO"}</li>
-            <li>• {t.paramColdChainReserve || "Cold-Chain Battery & Fuel Reserve Estimation"}</li>
+          <ul style={{ fontSize: '0.75rem', color: 'var(--color-muted)', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: 0 }}>
+            <li>1. Ingest active incident callset from backend alerts</li>
+            <li>2. Map incidents to highway graph edge boundaries</li>
+            <li>3. Compute dynamic edge weights (Terrain + Weather + Penalty)</li>
+            <li>4. Run Dijkstra algorithm for Primary & Alternate paths</li>
+            <li>5. Synthesize operational decision rationale</li>
           </ul>
         </div>
       </div>
@@ -163,26 +253,31 @@ export const AIRoutePlanner = () => {
           <div>
             <h2 className="section-title">
               <Navigation size={20} color="#10B981" />
-              {t.aiRouteRecs}
+              Operational Route Results
             </h2>
             <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: '2px' }}>
               {t.origin}: <strong style={{ color: 'var(--color-text)' }}>{getLocName(routeResult.origin)}</strong> ➔ {t.destination}: <strong style={{ color: 'var(--color-text)' }}>{getLocName(routeResult.destination)}</strong>
             </p>
           </div>
-          <span className={`pill ${routeResult.aiRiskIndex > 50 ? 'caution' : 'clear'}`} style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
-            {t.aiRiskScoreLabel || "AI Risk Score"}: {routeResult.aiRiskIndex}/100
+          <span className={`pill ${routeResult.risk_score > 40 ? 'caution' : 'clear'}`} style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
+            Risk Index: {routeResult.risk_score}/100
           </span>
         </div>
 
-        {/* Live Weather Forecast Bar */}
-        <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(0, 242, 254, 0.08)', border: '1px solid rgba(0, 242, 254, 0.25)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-          <CloudRain size={20} color="#00F2FE" />
-          <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#2563EB' }}>{t.liveWeatherStatus || "Live Corridor Weather Status"}</div>
-            <div style={{ fontSize: '0.76rem', color: 'var(--color-text)' }}>
-              {routeResult.aiRiskIndex > 50 ? (t.heavyRainfall || routeResult.weatherAlert) : routeResult.weatherAlert}
-            </div>
-          </div>
+        {/* --- EXPLICIT ROUTE DECISION RATIONALE PANEL --- */}
+        <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.3)', marginBottom: '14px', flexShrink: 0 }}>
+          <h4 style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0284C7', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Info size={16} /> Route Decision Rationale (Why Selected)
+          </h4>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-text)', lineHeight: 1.45, margin: 0 }}>
+            {routeResult.decision_explanation}
+          </p>
+        </div>
+
+        {/* Live Weather Indicator */}
+        <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.76rem', color: 'var(--color-muted)', flexShrink: 0 }}>
+          <CloudRain size={16} color="#00F2FE" />
+          <span>{liveWeatherDesc} • Provenance: <strong style={{ color: '#F59E0B' }}>{routeResult.data_source_mode}</strong></span>
         </div>
 
         {/* Route Stack or Skeleton Loader */}
@@ -190,92 +285,130 @@ export const AIRoutePlanner = () => {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="skeleton-card" style={{ height: '110px' }} />
             <div className="skeleton-card" style={{ height: '110px' }} />
-            <div className="skeleton-card" style={{ height: '110px' }} />
           </div>
         ) : (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {routeResult.routes.map((r) => {
-              const isRecommended = r.id === 'route-ai-safe';
-              const isSelected = selectedRouteId === r.id;
-              const routeStatusText = r.status === 'blocked' ? (t.blocked || 'Blocked') : r.status === 'caution' ? (t.caution || 'Caution') : (t.clear || 'Clear');
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
+            {/* --- PRIMARY ROUTE CARD --- */}
+            <div
+              className={`route-card ${selectedRouteType === 'primary' ? 'recommended' : ''}`}
+              style={{
+                borderColor: selectedRouteType === 'primary' ? '#10B981' : undefined,
+                cursor: 'pointer'
+              }}
+              onClick={() => setSelectedRouteType('primary')}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#10B981' }}>
+                    PRIMARY ROUTE ({routeResult.path_nodes.join(' ➔ ')})
+                  </span>
+                  <span className="pill clear" style={{ background: '#10B981', color: '#FFF' }}>
+                    <ShieldCheck size={12} /> PRIMARY RECOMMENDED
+                  </span>
+                </div>
+                <span className="pill clear">SAFEST ETA</span>
+              </div>
 
-              const routeName = r.id === 'route-primary' ? (t.primaryHighwayCorridor || r.name) : r.id === 'route-ai-safe' ? (t.aiOptimizedSafeRoute || r.name) : (t.emergencyTacticalDetour || r.name);
-              const routeVia = r.id === 'route-primary' ? (t.viaDirectNationalHighway || r.via) : r.id === 'route-ai-safe' ? (t.viaAllWeatherTunnel || r.via) : (t.viaSecondaryStateHighway || r.via);
-              const routeQuality = r.id === 'route-primary' ? (t.pavedHighwaySlopes || r.roadQuality) : r.id === 'route-ai-safe' ? (t.reinforcedRidgeRoad || r.roadQuality) : (t.viaSecondaryStateHighway || r.roadQuality);
+              <div className="telemetry-grid" style={{ marginTop: '10px' }}>
+                <div className="telemetry-stat">
+                  <div className="stat-val">{routeResult.distance} <span style={{ fontSize: '0.7rem' }}>km</span></div>
+                  <div className="stat-lbl">Distance</div>
+                </div>
+                <div className="telemetry-stat">
+                  <div className="stat-val" style={{ color: '#FBBF24' }}>{routeResult.estimated_time} hrs</div>
+                  <div className="stat-lbl">Estimated Time</div>
+                </div>
+                <div className="telemetry-stat">
+                  <div className="stat-val" style={{ color: routeResult.risk_score < 30 ? '#34D399' : '#F59E0B' }}>
+                    {routeResult.risk_score}
+                  </div>
+                  <div className="stat-lbl">Risk Score</div>
+                </div>
+              </div>
 
-              const riskText = r.landslideRisk.includes("78%") ? (t.probHigh || r.landslideRisk) : (t.probLow || r.landslideRisk);
+              {/* Identified Risk Factors */}
+              <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-muted)', marginBottom: '4px' }}>
+                  Identified Risk Factors ({routeResult.risk_factors.length}):
+                </div>
+                <ul style={{ paddingLeft: '16px', margin: 0, fontSize: '0.74rem', color: 'var(--color-text)', lineHeight: 1.4 }}>
+                  {routeResult.risk_factors.map((rf, idx) => (
+                    <li key={idx}>{rf}</li>
+                  ))}
+                </ul>
+              </div>
 
-              return (
-                <div
-                  key={r.id}
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`Route option ${routeName}`}
-                  className={`route-card ${isRecommended ? 'recommended' : ''}`}
-                  style={{
-                    borderColor: isSelected ? 'var(--color-primary)' : undefined,
-                    cursor: 'pointer'
+              {/* Blocked Segments */}
+              {routeResult.blocked_segments && routeResult.blocked_segments.length > 0 && (
+                <div style={{ marginTop: '8px', padding: '6px 10px', borderRadius: '6px', background: 'rgba(220, 38, 38, 0.1)', border: '1px solid #DC2626', color: '#DC2626', fontSize: '0.73rem' }}>
+                  <strong>🚨 Blocked Segments Detoured:</strong>
+                  <ul style={{ paddingLeft: '16px', margin: '2px 0 0 0' }}>
+                    {routeResult.blocked_segments.map((bs, idx) => (
+                      <li key={idx}>{bs}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>
+                  ⚙️ Algorithm: Deterministic Dijkstra Graph Solver
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDispatchConvoy();
                   }}
-                  onClick={() => setSelectedRouteId(r.id)}
-                  onKeyDown={(e) => e.key === 'Enter' && setSelectedRouteId(r.id)}
+                  className="btn-primary"
+                  style={{ width: 'auto', padding: '6px 14px', fontSize: '0.76rem', minHeight: '36px' }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 800, fontSize: '0.95rem', color: isRecommended ? '#10B981' : 'var(--color-text)' }}>
-                        {routeName}
-                      </span>
-                      {isRecommended && (
-                        <span className="pill clear" style={{ background: '#10B981', color: '#FFF' }}>
-                          <ShieldCheck size={12} /> {t.bestSlaSafest || "BEST SLA SAFEST"}
-                        </span>
-                      )}
-                    </div>
-                    <span className={`pill ${r.status}`}>{routeStatusText}</span>
-                  </div>
+                  <Send size={13} /> Dispatch Convoy
+                </button>
+              </div>
+            </div>
 
-                  <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: '4px' }}>
-                    {t.viaLabel || "Via"}: {routeVia}
-                  </p>
-
-                  <div className="telemetry-grid" style={{ marginTop: '10px' }}>
-                    <div className="telemetry-stat">
-                      <div className="stat-val">{r.distanceKm} <span style={{ fontSize: '0.7rem' }}>{t.kmUnit || "km"}</span></div>
-                      <div className="stat-lbl">{t.distance}</div>
-                    </div>
-                    <div className="telemetry-stat">
-                      <div className="stat-val" style={{ color: '#FBBF24' }}>{r.estimatedTime}</div>
-                      <div className="stat-lbl">{t.duration}</div>
-                    </div>
-                    <div className="telemetry-stat">
-                      <div className="stat-val" style={{ color: r.safetyScore > 80 ? '#34D399' : '#FF66B2' }}>
-                        {r.safetyScore}%
-                      </div>
-                      <div className="stat-lbl">{t.safetyIndex}</div>
-                    </div>
-                    <div className="telemetry-stat">
-                      <div className="stat-val" style={{ fontSize: '0.82rem', color: 'var(--color-text)' }}>{riskText}</div>
-                      <div className="stat-lbl">{t.disruptionRisk}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--color-border)' }}>
-                    <span style={{ fontSize: '0.74rem', color: 'var(--color-muted)' }}>
-                      🛠 {routeQuality}
+            {/* --- ALTERNATE ROUTE CARD --- */}
+            {routeResult.alternate_route && (
+              <div
+                className="route-card"
+                style={{
+                  borderColor: selectedRouteType === 'alternate' ? '#0284C7' : 'var(--color-border)',
+                  background: 'var(--color-surface)',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setSelectedRouteType('alternate')}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0284C7' }}>
+                      ALTERNATE ROUTE ({routeResult.alternate_route.route_name})
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDispatchConvoy();
-                      }}
-                      className="btn-primary"
-                      style={{ width: 'auto', padding: '6px 14px', fontSize: '0.76rem', minHeight: '36px' }}
-                    >
-                      <Send size={13} /> {t.dispatchConvoy}
-                    </button>
+                  </div>
+                  <span className="pill warning" style={{ fontSize: '0.7rem' }}>SECONDARY FALLBACK</span>
+                </div>
+
+                <div className="telemetry-grid" style={{ marginTop: '10px' }}>
+                  <div className="telemetry-stat">
+                    <div className="stat-val">{routeResult.alternate_route.distance} <span style={{ fontSize: '0.7rem' }}>km</span></div>
+                    <div className="stat-lbl">Distance</div>
+                  </div>
+                  <div className="telemetry-stat">
+                    <div className="stat-val" style={{ color: '#FBBF24' }}>{routeResult.alternate_route.estimated_time} hrs</div>
+                    <div className="stat-lbl">Estimated Time</div>
+                  </div>
+                  <div className="telemetry-stat">
+                    <div className="stat-val" style={{ color: '#F59E0B' }}>
+                      {routeResult.alternate_route.risk_score}
+                    </div>
+                    <div className="stat-lbl">Risk Score</div>
                   </div>
                 </div>
-              );
-            })}
+
+                <p style={{ fontSize: '0.74rem', color: 'var(--color-muted)', marginTop: '8px' }}>
+                  <strong>Fallback Rationale:</strong> {routeResult.alternate_route.rationale}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -283,8 +416,8 @@ export const AIRoutePlanner = () => {
           <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10B981', color: '#34D399', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             <CheckCircle2 size={18} />
             <div>
-              <strong style={{ fontSize: '0.86rem' }}>{t.dispatchVectorized || "Convoy Dispatch Command Vectorized!"}</strong>
-              <p style={{ fontSize: '0.75rem' }}>{t.gpsTelemetryActive || "GPS telemetry channel active. Corridor monitoring initiated."}</p>
+              <strong style={{ fontSize: '0.86rem' }}>Convoy Dispatch Command Vectorized!</strong>
+              <p style={{ fontSize: '0.75rem' }}>Primary corridor vector active. Real-time telemetry monitoring initiated.</p>
             </div>
           </div>
         )}

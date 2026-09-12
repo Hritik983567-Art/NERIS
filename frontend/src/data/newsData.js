@@ -16,7 +16,7 @@ export const regionalNewsArticles = [
       as: "মধ্যনিশাৰ প্ৰবল শিল খহাৰ পিছত সীমান্ত পথ সংগঠনে (BRO) চেলা সুৰংগ পথত ডজাৰ মোতায়েন কৰিছে। জৰুৰী বাহনসমূহ ভালুকপুং হৈ প্ৰেৰণ কৰা হৈছে।",
       bn: "প্রবল পাথর ধসের পর সীমান্ত সড়ক সংস্থা (BRO) সেলা টানেল সংযোগে ডোজার মোতায়েন করেছে। জরুরি যানবাহন ভলুকপং দিয়ে ঘুরিয়ে দেওয়া হচ্ছে।",
       hi: "मध्यरात्रि को भारी चट्टान खिसकने के बाद बीआरओ ने सेला सुरंग मार्ग पर बुलडोजर तैनात किए हैं। आपातकालीन वाहनों को भालुकपोंग मार्ग से भेजा जा रहा है।",
-      mn: "BRO ꯅ ꯁꯦꯂꯥ ꯇꯅꯦꯜ ꯑꯃꯁꯨꯡ ꯇꯋꯥꯡ ꯂꯝꯕꯤ ꯁꯦꯝꯒꯠꯅꯕ dozer ꯊꯥꯈ꯭ꯔꯦ꯫ Emergency vehicles ꯁꯤꯡ Bhalukpong ꯗꯒꯤ route change ꯇ꧀ꯧꯔꯦ꯫"
+      mn: "BRO ꯅ ꯁꯦꯂꯥ ꯇꯅꯦꯜ ꯑꯃꯁꯨꯡ ꯇꯋꥥꯡ ꯂꯝꯕꯤ ꯁꯦꯝꯒꯠꯅꯕ dozer ꯊꯥꯈ꯭ꯔꯦ꯫ Emergency vehicles ꯁꯤꯡ Bhalukpong ꯗꯒꯤ route change ꯇ꧀ꯧꯔꯦ꯫"
     },
     fullContent: {
       en: "Severe high-altitude precipitation near the 13,700-ft Sela Pass in West Kameng district triggered massive midnight rockfalls along NH-13. BRO Officers from 42 BRTF are clearing over 850 metric tonnes of debris. Convoys carrying cold-chain medical supplies for Tawang District Hospital have been temporarily rerouted via the Bhalukpong-Bomdila corridor. Single-lane emergency passage expected within 6 hours.",
@@ -29,7 +29,7 @@ export const regionalNewsArticles = [
     timestamp: "18 mins ago",
     readTime: "2 min read",
     urgency: "critical",
-    image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80",
+    image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80",
     corridorId: "corridor-tawang"
   },
   {
@@ -49,7 +49,7 @@ export const regionalNewsArticles = [
       as: "শ্বিলং বতৰ বিজ্ঞান কেন্দ্রে ইষ্ট খাছী পাহাৰৰ বাবে সতৰ্কতা জাৰি কৰিছে। পৰ্যটকসকলক বিয়েলি ৫ বজাৰ পিছত সোঁহৰা পথত ভ্ৰমণ নকৰিবলৈ পৰামৰ্শ দিয়া হৈছে।",
       bn: "পূর্ব খাসি পাহাড়ের জন্য শূন্য দৃশ্যমানতার সতর্কতা জারি করল আবহাওয়া দপ্তর। বিকেল ৫টার পর শিলং-সোয়রা রুটে গাড়ি চালানো বন্ধের নির্দেশ।",
       hi: "मौसम विभाग ने ईस्ट खासी हिल्स के लिए दृश्यता चेतावनी जारी की है। शाम 5 बजे के बाद शिलोंग-सोहरा मार्ग पर यात्रा टालने की सलाह।",
-      mn: "IMD ꯅ East Khasi Hills ꯒꯤ ꯅꯣꯡꯖꨨ-ꯅꯨꯡꯁꯤꯠ Alert ꯄꯤꯈ꯭ꯔꯦ꯫ Nuṃthi 5 PM ꯃꯇꨨꯡꯗ Shillong to Sohra road travel ꯇꯧꯗꯅꯕ ꯈꯉꯍꯅꯈ꯭ꯔꯦ꯫"
+      mn: "IMD ꯅ East Khasi Hills ꯒꯤ ꯅꯣꯡꯖꨨ-ꯅꨨꯡꯁꯤꯠ Alert ꯄꯤꯈ꯭ꯔꯦ꯫ Nuṃthi 5 PM ꯃꯇꨨꯡꯗ Shillong to Sohra road travel ꯇꯧꯗꯅꯕ ꯈꯉꯍꯅꯈ꯭ꯔꯦ꯫"
     },
     fullContent: {
       en: "Dense orographic clouds and persistent drizzle along NH-206 have reduced visibility below 5 meters across the Laitkor peak and Upper Shillong corridor. Meghalaya Transport Authority recommends all tourist buses and heavy transport goods vehicles operate under fog lamps with a speed cap of 25 km/h.",
@@ -62,7 +62,7 @@ export const regionalNewsArticles = [
     timestamp: "42 mins ago",
     readTime: "3 min read",
     urgency: "warning",
-    image: "https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=600&q=80",
+    image: "https://images.unsplash.com/photo-1428592953211-077101b2021b?auto=format&fit=crop&w=800&q=80",
     corridorId: "corridor-shillong"
   },
   {
@@ -95,7 +95,7 @@ export const regionalNewsArticles = [
     timestamp: "1 hour ago",
     readTime: "4 min read",
     urgency: "info",
-    image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80",
+    image: "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=800&q=80",
     corridorId: "corridor-silchar"
   },
   {
@@ -128,7 +128,7 @@ export const regionalNewsArticles = [
     timestamp: "2 hours ago",
     readTime: "3 min read",
     urgency: "critical",
-    image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=600&q=80",
+    image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
     corridorId: "corridor-sikkim"
   },
   {
@@ -161,7 +161,7 @@ export const regionalNewsArticles = [
     timestamp: "3 hours ago",
     readTime: "2 min read",
     urgency: "warning",
-    image: "https://images.unsplash.com/photo-1545167622-3a6ac756afa4?auto=format&fit=crop&w=600&q=80",
+    image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=80",
     corridorId: "corridor-imphal"
   },
   {
@@ -188,13 +188,13 @@ export const regionalNewsArticles = [
       as: "কাজিৰঙাত পানীৰ স্তৰ বৃদ্ধি পোৱাৰ সময়ত ৩৭ নং ৰাষ্ট্ৰীয় ঘাইপথত ৬ টা সৌৰশক্তিচালিত ৰাডাৰ সক্ৰিয় কৰা হৈছে। ৪০ কিমি/ঘণ্টাতকৈ অধিক বেগত চলা ট্ৰাকসমূহক স্বয়ংক্ৰিয় ই-চালান প্ৰদান কৰা হ'ব।",
       bn: "কাজিরাঙ্গায় জলস্তর বৃদ্ধির সময় বন্যপ্রাণীর পাহাড়ে ওঠার সুবিধার্থে ৩৭ নম্বর জাতীয় সড়কে ৬টি সোলার স্পিড রাডার সক্রিয় করা হয়েছে। ৪০ কিমি/ঘণ্টার বেশি গতিতে চলা গাড়ির ই-চালান কাটা হবে।",
       hi: "काजीरंगा में जलस्तर बढ़ने पर एनएच-37 पर 6 सोलर स्पीड रडार लगाए गए हैं। 40 किमी/घंटा से अधिक गति से चलने वाले वाणिज्यिक ट्रकों का ई-चालान काटा जाएगा।",
-      mn: "Kaziranga ꯗ ꯏꯁꯤꯡ ꯀꯥꯕ ꯃꯇꯝꯗ wildlife safety ꯒꯤ NH-37 ꯗ Solar Speed Radar 6 ꯊꯝꯈ꯭ꯔꯦ꯫ Speed 40 km/h ꯍꯦꯟꯅ ꯆꯠꯂꯕꯗꯤ Automatic e-Challan ꯄꯤꯒꯅꯤ꯫"
+      mn: "Kaziranga ꯗ ꯏꯁꯤꯡ ꯀꥥꯕ ꯃꯇꯝꯗ wildlife safety ꯒꯤ NH-37 ꯗ Solar Speed Radar 6 ꯊꯝꯈ꯭ꯔꯦ꯫ Speed 40 km/h ꯍꯦꯟꯅ ꯆꯠꯂꯕꯗꯤ Automatic e-Challan ꯄꯤꯒꯅꯤ꯫"
     },
     source: "Assam Forest & Highway Police Command",
     timestamp: "4 hours ago",
     readTime: "3 min read",
     urgency: "info",
-    image: "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=600&q=80",
+    image: "https://images.unsplash.com/photo-1534567153574-2b12153a87f0?auto=format&fit=crop&w=800&q=80",
     corridorId: "corridor-kaziranga"
   },
   {
@@ -227,7 +227,7 @@ export const regionalNewsArticles = [
     timestamp: "5 hours ago",
     readTime: "2 min read",
     urgency: "info",
-    image: "https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=600&q=80",
+    image: "https://images.unsplash.com/photo-1474487548417-781cb71495f3?auto=format&fit=crop&w=800&q=80",
     corridorId: "corridor-agartala"
   },
   {
@@ -247,20 +247,20 @@ export const regionalNewsArticles = [
       as: "এনএইচআইডিচিএল কৰ্তৃপক্ষই চুমুকেডিমা অংশৰ মাটি খহা ৰোধ কৰিবলৈ মেৰামতি কাম সম্পূৰ্ণ কৰিছে। গধুৰ ট্ৰাকৰ যাতায়াত মুকলি।",
       bn: "এনএইচআইডিসিএল কর্তৃপক্ষ চুমুকেডিমা অংশে পাহাড় ধস রুখতে মেরামতের কাজ শেষ করেছে। ভারী ট্রাক চলাচল আবার শুরু।",
       hi: "एनएचआईडीसीएल की टीम ने चुमुकेदिमा भूस्खलन क्षेत्र में मरम्मत का कार्य पूरा कर लिया है। भारी ट्रकों की आवाजाही पुनः शुरू।",
-      mn: "NHIDCL Engineering team ꯅ Chumukedima stretch ꯗ ꯂꯩꯃꯥꯏ ꯇꯥꯕ ꯊꯤꯡꯅꯕ ꯁꯦꯝꯒꯠꯄ ꯂꯣꯏꯁꯤꯅꯈ꯭ꯔꯦ, Heavy Trucks ꯆꯠꯄ ꯌꯥꯔꯦ꯫"
+      mn: "NHIDCL Engineering team ꯅ Chumukedima stretch ꯗ ꯂꯩꯃꯥꯏ ꯇꯥꯕ ꯊꯤꯡꯅꯕ ꯁꯦꯝꯒꯠꯄ ꯂꯣꯏꯁꯤꯅꯈ꯭ꯔꯦ, Heavy Trucks ꯆꯠꯄ ꯌꥥꯔꯦ꯫"
     },
     fullContent: {
       en: "National Highways and Infrastructure Development Corporation Limited (NHIDCL) has placed pre-cast gabion wire mesh walls along the vulnerable 4-km Chumukedima ghat section on NH-29. This critical infrastructure work ensures uninterrupted movement of essential goods trucks between Dimapur railhead and Kohima buffer depots.",
       as: "এনএইচআইডিচিএলৰ বিষয়া সকলে ২৯ নং ৰাষ্ট্ৰীয় ঘাইপথৰ ৪ কিমি দৈৰ্ঘ্যৰ চুমুকেডিমা অংশত বৰফ আৰু মাটি খহা ৰোধৰ কাৰণে দেৱাল নিৰ্মাণ কৰে। ইয়াৰ ফলত দিমাপুৰৰ পৰা কোহিমালৈ সামগ্ৰী সৰবৰাহ সুচল হৈ পৰিছে।",
       bn: "এনএইচআইডিসিএল ২৯ নম্বর জাতীয় সড়কের ৪ কিমি দীর্ঘ চুমুকেডিমা অংশে মাটি ধস রুখতে বিশেষ নিরাপত্তা দেয়াল তৈরি করেছে। ফলে দিমাপুর থেকে কোহিমায় পণ্য সরবরাহ সচল রয়েছে।",
       hi: "एनएचआईडीसीएल ने एनएच-29 के 4 किमी लंबे चुमुकेदिमा घाट खंड पर सुरक्षा दीवारें खड़ी कर दी हैं। इससे दिमापुर से कोहिमा के बीच आवश्यक वस्तुओं की आपूर्ति सुचारू रहेगी।",
-      mn: "NHIDCL ꯅ NH-29 ꯒꯤ 4 km ꯁꯥꯡꯕ Chumukedima ghat section ꯗ ꯂꯩꯃꯥꯏ ꯇꯥꯕ ꯊꯤꯡꯅꯕ Safety Wall ꯁꯦꯝꯈ꯭ꯔꯦ꯫ Dimapur to Kohima Supply trucks ꯁꯤꯡ Smooth ꯑꯣꯏꯅ ꯆꯠꯄ ꯌꯥꯔꯦ꯫"
+      mn: "NHIDCL ꯅ NH-29 ꯒꯤ 4 km ꯁꯥꯡꯕ Chumukedima ghat section ꯗ ꯂꯩꯃꯥꯏ ꯇꯥꯕ ꯊꯤꯡꯅꯕ Safety Wall ꯁꯦꯝꯈ꯭ꯔꯦ꯫ Dimapur to Kohima Supply trucks ꯁꯤꯡ Smooth ꯑꯣꏏꯅ ꯆꯠꯄ ꯌꯥꯔꯦ꯫"
     },
     source: "NHIDCL Nagaland Command",
     timestamp: "6 hours ago",
     readTime: "3 min read",
     urgency: "info",
-    image: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=600&q=80",
+    image: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=80",
     corridorId: "corridor-kohima"
   }
 ];

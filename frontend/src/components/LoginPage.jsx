@@ -38,13 +38,16 @@ export const LoginPage = () => {
   const [hub, setHub] = useState('Guwahati Central Depot (Assam)');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const handleOfficerSubmit = (e) => {
+  const handleOfficerSubmit = async (e) => {
     e.preventDefault();
     setIsAuthenticating(true);
-    setTimeout(() => {
-      login(officerId, officerRole, hub);
+    try {
+      await login(officerId, password, officerRole, hub);
+    } catch (err) {
+      console.warn("Auth error:", err);
+    } finally {
       setIsAuthenticating(false);
-    }, 500);
+    }
   };
 
   const handlePublicSubmit = (e) => {
@@ -346,13 +349,19 @@ export const LoginPage = () => {
           {/* Form Mode 2: Official Disaster Officer Clearance */}
           {authMode === 'official' && (
             <div>
-              <div style={{ marginBottom: '12px' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-                  {t.officerTitle}
-                </h3>
-                <p style={{ fontSize: '0.74rem', color: 'var(--color-muted)', marginTop: '2px' }}>
-                  {t.officerSub}
-                </p>
+              <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                    {t.officerTitle}
+                  </h3>
+                  <p style={{ fontSize: '0.74rem', color: 'var(--color-muted)', marginTop: '2px' }}>
+                    {t.officerSub}
+                  </p>
+                </div>
+                <div className="pill clear" style={{ fontSize: '0.64rem', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <ShieldCheck size={12} color="#10B981" />
+                  <span>Cognito Auth</span>
+                </div>
               </div>
 
               {/* Quick Officer Role Selector */}

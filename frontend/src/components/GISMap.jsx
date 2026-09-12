@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useApp } from '../context/AppContext';
+import { api } from '../services/api';
 import { majorCorridors, hubLocations } from '../data/nerData';
 import { localizedCorridors, localizedFleets } from '../data/localizedData';
 import {
@@ -82,6 +83,50 @@ export const GISMap = () => {
   const [showWeatherOverlay, setShowWeatherOverlay] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [dockTab, setDockTab] = useState('layers');
+  const [backendHubs, setBackendHubs] = useState([]);
+  const [liveIncidents, setLiveIncidents] = useState([]);
+  const [liveWeatherList, setLiveWeatherList] = useState([]);
+  const [aiIntelligence, setAiIntelligence] = useState(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
+  useEffect(() => {
+    setAiIntelligence(null);
+  }, [selectedItem]);
+
+  const handleGenerateAI = async () => {
+    if (!selectedItem || selectedItem.type !== 'incident') return;
+    setLoadingAi(true);
+    setAiIntelligence(null);
+    try {
+      const res = await api.getIncidentAIIntelligence(selectedItem.data.id, selectedItem.data);
+      setAiIntelligence(res);
+    } catch (err) {
+      setAiIntelligence({
+        available: false,
+        error_message: err.message || 'Amazon Bedrock connection error.'
+      });
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  useEffect(() => {
+    async function loadNetworkData() {
+      const nodes = await api.getNetworkNodes();
+      if (nodes && nodes.length > 0) {
+        setBackendHubs(nodes);
+      }
+      const liveIncs = await api.getLiveIncidents();
+      if (liveIncs && liveIncs.length > 0) {
+        setLiveIncidents(liveIncs);
+      }
+      const weatherRes = await api.getLiveWeather();
+      if (weatherRes && weatherRes.hubs_weather) {
+        setLiveWeatherList(weatherRes.hubs_weather);
+      }
+    }
+    loadNetworkData();
+  }, []);
 
   const currentStateObj = nerStates.find((s) => s.id === stateFilter) || nerStates[0];
   
@@ -184,7 +229,8 @@ export const GISMap = () => {
               </div>
             ) : (
               filteredIncidents.map((inc) => {
-                const incStatusText = inc.severity === 'critical' ? (t.pillBlocked || 'BLOCKED') : (t.pillCaution || 'CAUTION');
+                const incStatusText = inc.severity?.toLowerCase() === 'critical' ? (t.pillBlocked || 'BLOCKED') : (t.pillCaution || 'CAUTION');
+                const isLiveIncident = Boolean(inc.is_live || inc.dynamodb_confirmed || inc.status === 'SYNCED' || inc.status === 'SUBMITTED');
 
                 return (
                   <div
@@ -198,14 +244,26 @@ export const GISMap = () => {
                   >
                     <div className="item-card-header">
                       <span className="item-card-title" style={{ fontWeight: 800, fontSize: '0.84rem', color: 'var(--color-text)' }}>{inc.title}</span>
-                      <span className={`pill ${inc.severity === 'critical' ? 'blocked' : 'caution'}`}>
+                      <span className={`pill ${inc.severity?.toLowerCase() === 'critical' ? 'blocked' : 'caution'}`}>
                         {incStatusText}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.74rem', color: 'var(--color-muted)', marginTop: '3px' }}>
-                      📍 {inc.locationName}
+
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
+                      <span className={`pill ${isLiveIncident ? 'blocked' : 'clear'}`} style={{ fontSize: '0.62rem', padding: '2px 6px', fontWeight: 800 }}>
+                        {isLiveIncident ? '🔴 LIVE INCIDENT (AWS DynamoDB)' : 'DEMO DATA'}
+                      </span>
+                      {inc.type && (
+                        <span className="pill clear" style={{ fontSize: '0.62rem', padding: '2px 6px' }}>
+                          {inc.type}
+                        </span>
+                      )}
+                    </div>
+
+                    <p style={{ fontSize: '0.74rem', color: 'var(--color-muted)', marginTop: '4px' }}>
+                      📍 {inc.locationName || inc.location_name}
                     </p>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--color-muted)', marginTop: '3px', lineHeight: 1.35 }}>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--color-muted)', marginTop: '2px', lineHeight: 1.35 }}>
                       {inc.description}
                     </p>
                   </div>
@@ -258,26 +316,55 @@ export const GISMap = () => {
             </Polyline>
           ))}
 
-          {showIncidents && filteredIncidents.map((inc) => (
-            <Marker
-              key={inc.id}
-              position={[inc.lat, inc.lng]}
-              icon={inc.type === 'flood' ? floodIcon : landslideIcon}
-              eventHandlers={{
-                click: () => setSelectedItem({ type: 'incident', data: inc })
-              }}
-            >
-              <Popup>
-                <div style={{ color: '#F8FAFC', maxWidth: '220px' }}>
-                  <strong style={{ color: '#FF66B2', fontSize: '0.9rem' }}>{inc.title}</strong>
-                  <p style={{ fontSize: '0.78rem', marginTop: '4px', color: '#E2E8F0' }}>{inc.description}</p>
-                  <p style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: '4px' }}>
-                    Reporter: {inc.reporter}
-                  </p>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          {showIncidents && filteredIncidents.map((inc) => {
+            const isLive = Boolean(inc.is_live || inc.dynamodb_confirmed || inc.status === 'SYNCED' || inc.status === 'SUBMITTED');
+            const photoSrc = inc.evidence_url || inc.photoUrl;
+
+            return (
+              <Marker
+                key={inc.id}
+                position={[inc.lat, inc.lng]}
+                icon={inc.type?.toLowerCase() === 'flood' ? floodIcon : landslideIcon}
+                eventHandlers={{
+                  click: () => setSelectedItem({ type: 'incident', data: inc })
+                }}
+              >
+                <Popup>
+                  <div style={{ color: '#F8FAFC', maxWidth: '240px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <strong style={{ color: '#FF66B2', fontSize: '0.9rem' }}>{inc.title}</strong>
+                    </div>
+
+                    <div style={{ marginBottom: '6px' }}>
+                      <span className={`pill ${isLive ? 'blocked' : 'clear'}`} style={{ fontSize: '0.6rem', padding: '1px 5px' }}>
+                        {isLive ? '🔴 LIVE INCIDENT (AWS)' : 'DEMO DATA'}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: '0.78rem', color: '#E2E8F0', margin: '4px 0' }}>{inc.description}</p>
+                    
+                    <div style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: '4px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '4px' }}>
+                      <div>Type: <strong style={{ color: '#FFF' }}>{inc.type || 'HAZARD'}</strong> • Severity: <strong style={{ color: '#EF4444' }}>{inc.severity}</strong></div>
+                      <div>GPS: <code>{inc.lat?.toFixed(4)}, {inc.lng?.toFixed(4)}</code></div>
+                      <div>Reporter: {inc.reporter || 'Field Unit'}</div>
+                      <div>Status: <strong style={{ color: '#34D399' }}>{inc.status || 'ACTIVE'}</strong></div>
+                      {inc.timestamp && <div>Time: {new Date(inc.timestamp).toLocaleTimeString()}</div>}
+                    </div>
+
+                    {photoSrc && (
+                      <div style={{ marginTop: '6px' }}>
+                        <img
+                          src={photoSrc}
+                          alt="Evidence"
+                          style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
 
           {showFleets && filteredFleets.map((f) => (
             <Marker
@@ -320,12 +407,14 @@ export const GISMap = () => {
             </Marker>
           ))}
 
-          {hubLocations.map((hub, idx) => (
-            <Marker key={idx} position={[hub.lat, hub.lng]} icon={hubIcon}>
+          {(backendHubs.length > 0 ? backendHubs : hubLocations).map((hub, idx) => (
+            <Marker key={hub.id || idx} position={[hub.lat, hub.lng]} icon={hubIcon}>
               <Popup>
                 <div style={{ color: '#F8FAFC' }}>
-                  <strong style={{ color: '#C084FC' }}>🏬 {hub.name}</strong>
-                  <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '2px' }}>Regional Supply Node ({hub.state})</p>
+                  <strong style={{ color: '#C084FC' }}>🏬 {hub.name || hub.id}</strong>
+                  <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '2px' }}>
+                    Regional Supply Node ({hub.state}) {hub.elevation_m ? `• ${hub.elevation_m}m Alt` : ''}
+                  </p>
                 </div>
               </Popup>
             </Marker>
@@ -339,21 +428,57 @@ export const GISMap = () => {
               {selectedItem.type === 'incident' && <AlertTriangle size={22} color="#FF2E93" />}
               {selectedItem.type === 'corridor' && <Navigation size={22} color="#10B981" />}
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <strong style={{ fontSize: '0.92rem', color: 'var(--color-text)' }}>
                     {selectedItem.type === 'fleet' ? selectedItem.data.id : selectedItem.data.name || selectedItem.data.title}
                   </strong>
                   <span className={`pill ${selectedItem.data.status || selectedItem.data.severity || 'clear'}`}>
                     {selectedItem.type.toUpperCase()} • {selectedItem.data.status || selectedItem.data.severity}
                   </span>
+
+                  {selectedItem.type === 'incident' && (
+                    <span className={`pill ${(selectedItem.data.is_live || selectedItem.data.dynamodb_confirmed || selectedItem.data.status === 'SYNCED' || selectedItem.data.status === 'SUBMITTED') ? 'blocked' : 'clear'}`} style={{ fontSize: '0.64rem', fontWeight: 800 }}>
+                      {(selectedItem.data.is_live || selectedItem.data.dynamodb_confirmed || selectedItem.data.status === 'SYNCED' || selectedItem.data.status === 'SUBMITTED') ? '🔴 LIVE INCIDENT (AWS DynamoDB)' : 'DEMO DATA'}
+                    </span>
+                  )}
                 </div>
+
                 <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: '2px' }}>
-                  {selectedItem.data.route || selectedItem.data.locationName || selectedItem.data.currentLocationName || selectedItem.data.description}
+                  {selectedItem.data.route || selectedItem.data.locationName || selectedItem.data.location_name || selectedItem.data.currentLocationName || selectedItem.data.description}
                 </p>
+
+                {selectedItem.type === 'incident' && (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)', display: 'flex', gap: '12px', marginTop: '4px', flexWrap: 'wrap' }}>
+                    <span>📍 GPS: <code>{selectedItem.data.lat?.toFixed(4)}, {selectedItem.data.lng?.toFixed(4)}</code></span>
+                    <span>Officer: <strong>{selectedItem.data.reporter || 'Field Unit'}</strong></span>
+                    <span>Status: <strong>{selectedItem.data.status || 'ACTIVE'}</strong></span>
+                    {(selectedItem.data.evidence_url || selectedItem.data.photoUrl) && (
+                      <span style={{ color: '#10B981', fontWeight: 700 }}>📷 S3 Evidence Attached</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {selectedItem.type === 'incident' && (
+                <button
+                  onClick={handleGenerateAI}
+                  disabled={loadingAi}
+                  className="btn-primary"
+                  style={{
+                    background: 'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)',
+                    padding: '6px 14px',
+                    fontSize: '0.78rem',
+                    width: 'auto',
+                    minHeight: '36px',
+                    boxShadow: '0 0 10px rgba(124, 58, 237, 0.4)'
+                  }}
+                >
+                  <Sparkles size={14} className={loadingAi ? "animate-spin" : ""} />
+                  {loadingAi ? "Analyzing with Amazon Bedrock..." : "AI Intelligence (Bedrock)"}
+                </button>
+              )}
               {selectedItem.type === 'fleet' && (
                 <button
                   onClick={() => triggerSOSAlert(selectedItem.data.id, "Inspector Escort Dispatched")}
@@ -379,6 +504,74 @@ export const GISMap = () => {
                 Dismiss
               </button>
             </div>
+
+            {/* AI Intelligence Output Block */}
+            {selectedItem.type === 'incident' && aiIntelligence && (
+              <div style={{
+                marginTop: '12px',
+                paddingTop: '12px',
+                borderTop: '1px solid var(--color-border)',
+                gridColumn: '1 / -1',
+                width: '100%'
+              }}>
+                <div style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid #F59E0B',
+                  color: '#FBBF24',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginBottom: '10px'
+                }}>
+                  <Info size={14} />
+                  <span>{aiIntelligence.disclaimer || "⚠️ AI-Assisted Incident Intelligence — Requires Human Field Officer Verification."}</span>
+                </div>
+
+                {aiIntelligence.available === false ? (
+                  <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #EF4444', borderRadius: '6px', color: '#FCA5A5', fontSize: '0.76rem' }}>
+                    ⚠️ {aiIntelligence.error_message || "Amazon Bedrock AI service is unconfigured or unavailable in this environment."}
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', fontSize: '0.76rem', color: 'var(--color-text)' }}>
+                    <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                      <strong style={{ color: '#A78BFA', fontSize: '0.78rem' }}>Summary:</strong>
+                      <p style={{ margin: '4px 0 0 0', color: 'var(--color-text)', lineHeight: 1.4 }}>{aiIntelligence.summary}</p>
+                    </div>
+
+                    <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                      <strong style={{ color: '#F87171', fontSize: '0.78rem' }}>Potential Operational Impact:</strong>
+                      <p style={{ margin: '4px 0 0 0', color: 'var(--color-text)', lineHeight: 1.4 }}>{aiIntelligence.potential_operational_impact}</p>
+                    </div>
+
+                    {aiIntelligence.verification_questions?.length > 0 && (
+                      <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                        <strong style={{ color: '#FBBF24', fontSize: '0.78rem' }}>Questions to Verify on Ground:</strong>
+                        <ul style={{ margin: '4px 0 0 16px', padding: 0, color: 'var(--color-text)', lineHeight: 1.35 }}>
+                          {aiIntelligence.verification_questions.map((q, idx) => (
+                            <li key={idx}>{q}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {aiIntelligence.suggested_response_actions?.length > 0 && (
+                      <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                        <strong style={{ color: '#34D399', fontSize: '0.78rem' }}>Suggested Response Actions:</strong>
+                        <ul style={{ margin: '4px 0 0 16px', padding: 0, color: 'var(--color-text)', lineHeight: 1.35 }}>
+                          {aiIntelligence.suggested_response_actions.map((act, idx) => (
+                            <li key={idx}>{act}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  NERIS (North-East India Rapid Logistics & Disaster Relief Network)
+  AWS Serverless Infrastructure Stack for AWS First Commit Hackathon
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.11
+    Environment:
+      Variables:
+        AWS_REGION_NAME: ap-south-1
+        DYNAMODB_INCIDENTS_TABLE: !Ref NerisIncidentsTable
+        S3_BUCKET_EVIDENCE: !Ref NerisEvidenceBucket
+        COGNITO_USER_POOL_ID: !Ref NerisUserPool
+        COGNITO_CLIENT_ID: !Ref NerisUserPoolClient
+
+Resources:
+  # 1. DynamoDB Table for Incidents Persistence
+  NerisIncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ner_incidents
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # 2. Amazon S3 Bucket for Field Evidence Photos
+  NerisEvidenceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: neris-evidence-photos-ap-south-1
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: ['GET', 'PUT', 'POST', 'HEAD']
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+
+  # 3. Amazon Cognito User Pool for Commander & Officer Authentication
+  NerisUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: NerisCommandUserPool
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+
+  NerisUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: NerisWebClient
+      UserPoolId: !Ref NerisUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # 4. Amazon API Gateway HTTP API
+  NerisApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  # 5. AWS Lambda API Server Function (FastAPI Handler)
+  NerisApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./backend
+      Handler: app.main.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NerisIncidentsTable
+        - S3CrudPolicy:
+            BucketName: !Ref NerisEvidenceBucket
+      Events:
+        HealthApi:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: get
+            RestApiId: !Ref NerisApi
+        IncidentsApiGet:
+          Type: Api
+          Properties:
+            Path: /incidents
+            Method: get
+            RestApiId: !Ref NerisApi
+        IncidentsApiPost:
+          Type: Api
+          Properties:
+            Path: /incidents
+            Method: post
+            RestApiId: !Ref NerisApi
+        ProxyApiGreedy:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: any
+            RestApiId: !Ref NerisApi
+
+Outputs:
+  NerisApiUrl:
+    Description: "API Gateway Endpoint URL for Prod Stage"
+    Value: !Sub "https://${NerisApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  NerisIncidentsTableName:
+    Description: "DynamoDB Table Name"
+    Value: !Ref NerisIncidentsTable
+  NerisEvidenceBucketName:
+    Description: "S3 Bucket Name for Field Evidence"
+    Value: !Ref NerisEvidenceBucket
+  NerisUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref NerisUserPool

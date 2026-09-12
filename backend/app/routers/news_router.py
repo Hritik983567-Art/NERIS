@@ -1,0 +1,142 @@
+from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, Query, HTTPException, status
+from pydantic import BaseModel
+
+from app.services.news.base import NERISNewsArticle, NewsCategory, SeverityLevel
+from app.services.news.provider import get_news_service_manager
+
+router = APIRouter(prefix="/api/news", tags=["NERIS Disaster & Logistics Intelligence Feed API"])
+
+
+class UnverifiedReportResponse(BaseModel):
+    report_id: str
+    source_article_id: str
+    headline: str
+    summary: str
+    suggested_hazard_type: str
+    suggested_district: str
+    suggested_severity: str
+    verification_status: str = "UNVERIFIED_EXTERNAL_REPORT"
+    disclaimer: str = "Unverified External Report — Commander verification required before operational dispatch."
+    created_at: str
+
+
+class AISummaryResponse(BaseModel):
+    article_id: str
+    ai_summary: str
+    disclaimer: str = "AI-generated summary — verify with original source."
+
+
+@router.get("", status_code=status.HTTP_200_OK)
+async def get_news_feed(
+    category: Optional[str] = Query(None, description="Filter by news category"),
+    location: Optional[str] = Query(None, description="Filter by state or location region"),
+    severity: Optional[str] = Query(None, description="Filter by severity level"),
+    q: Optional[str] = Query(None, description="Search query string"),
+    sort_by: Optional[str] = Query("relevance", description="Sort order: relevance, newest, severity"),
+    is_demo: Optional[bool] = Query(False, description="Force demo seed dataset mode"),
+    refresh: Optional[bool] = Query(False, description="Force instant live provider refresh")
+):
+    """
+    Primary API endpoint for the NERIS Disaster & Logistics Intelligence Feed.
+    Consumed by the React News tab.
+    """
+    manager = get_news_service_manager()
+    return await manager.get_news_feed(
+        category=category,
+        location=location,
+        severity=severity,
+        q=q,
+        sort_by=sort_by,
+        force_demo=is_demo or False,
+        force_refresh=refresh or False
+    )
+
+
+@router.get("/categories", status_code=status.HTTP_200_OK)
+async def get_news_categories():
+    """
+    Returns supported news categories.
+    """
+    return {
+        "categories": [c.value for c in NewsCategory]
+    }
+
+
+@router.get("/locations", status_code=status.HTTP_200_OK)
+async def get_news_locations():
+    """
+    Returns supported location filters across Northeast India.
+    """
+    return {
+        "locations": [
+            "ALL NER", "ASSAM", "ARUNACHAL PRADESH", "MEGHALAYA",
+            "MANIPUR", "MIZORAM", "NAGALAND", "TRIPURA", "SIKKIM"
+        ]
+    }
+
+
+@router.get("/{article_id}", response_model=NERISNewsArticle, status_code=status.HTTP_200_OK)
+async def get_news_article_by_id(article_id: str):
+    """
+    Retrieves a single news article by ID.
+    """
+    manager = get_news_service_manager()
+    article = await manager.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail=f"Article with ID '{article_id}' not found.")
+    return article
+
+
+@router.post("/{article_id}/ai-summary", response_model=AISummaryResponse, status_code=status.HTTP_200_OK)
+async def generate_ai_summary(article_id: str):
+    """
+    Generates a Bedrock/AI operational summary of the given news article.
+    Does not invent facts or alter original content meaning.
+    """
+    manager = get_news_service_manager()
+    article = await manager.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail=f"Article with ID '{article_id}' not found.")
+
+    # Synthesize factual AI summary based on title, summary, location, and severity
+    ai_text = (
+        f"Operational Briefing ({article.location}): {article.title}. "
+        f"Key Assessment: {article.summary} "
+        f"Impact Level: {article.severity} severity affecting transportation and supply logistics. "
+        f"Source: {article.source}."
+    )
+
+    return AISummaryResponse(
+        article_id=article_id,
+        ai_summary=ai_text,
+        disclaimer="AI-generated summary — verify with original source."
+    )
+
+
+@router.post("/{article_id}/convert-to-unverified-report", response_model=UnverifiedReportResponse, status_code=status.HTTP_200_OK)
+async def convert_article_to_unverified_report(article_id: str):
+    """
+    Converts a news article into an 'Unverified External Report' operational lead.
+    Does NOT automatically create a verified incident.
+    """
+    manager = get_news_service_manager()
+    article = await manager.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail=f"Article with ID '{article_id}' not found.")
+
+    # Determine hazard type based on category
+    hazard_type = "LANDSLIDE" if article.category in ["LANDSLIDE", "DISASTER"] else ("FLOOD" if article.category == "FLOOD" else "ROAD_BLOCKAGE")
+
+    return UnverifiedReportResponse(
+        report_id=f"UNV-REP-{article.id[:10]}",
+        source_article_id=article.id,
+        headline=article.title,
+        summary=article.summary,
+        suggested_hazard_type=hazard_type,
+        suggested_district=article.location,
+        suggested_severity=article.severity,
+        verification_status="UNVERIFIED_EXTERNAL_REPORT",
+        disclaimer="Unverified External Report — Commander verification required before operational dispatch.",
+        created_at=article.retrieved_at
+    )

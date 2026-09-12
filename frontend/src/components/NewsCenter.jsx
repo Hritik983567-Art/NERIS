@@ -1,13 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { regionalNewsArticles } from '../data/newsData';
+import { api } from '../services/api';
+import { getLocalizedCategory, getLocalizedLocation, getLocalizedSeverity, getLocalizedNewsText } from '../data/newsTranslations';
 import {
   Newspaper,
-  Globe,
   AlertTriangle,
-  Compass,
-  Truck,
-  Building2,
   Search,
   ExternalLink,
   Share2,
@@ -17,427 +14,776 @@ import {
   Filter,
   Flame,
   Radio,
-  BookOpen
+  BookOpen,
+  Sparkles,
+  RefreshCw,
+  FileWarning,
+  SlidersHorizontal,
+  ShieldAlert,
+  Layers,
+  ArrowUpDown
 } from 'lucide-react';
 
+const CATEGORIES_LIST = [
+  { id: 'ALL', label: 'All Categories', icon: '🌐' },
+  { id: 'DISASTER', label: 'Disaster', icon: '🚨' },
+  { id: 'WEATHER', label: 'Weather', icon: '🌧️' },
+  { id: 'ROAD & TRANSPORT', label: 'Road & Transport', icon: '🚚' },
+  { id: 'FLOOD', label: 'Flood', icon: '🌊' },
+  { id: 'LANDSLIDE', label: 'Landslide', icon: '⛰️' },
+  { id: 'INFRASTRUCTURE', label: 'Infrastructure', icon: '🏗️' },
+  { id: 'GOVERNMENT ADVISORY', label: 'Govt Advisory', icon: '🏛️' },
+  { id: 'EMERGENCY RESPONSE', label: 'Emergency Response', icon: '🚑' },
+  { id: 'LOGISTICS', label: 'Logistics', icon: '📦' },
+  { id: 'GENERAL', label: 'General', icon: '📰' }
+];
+
+const LOCATIONS_LIST = [
+  'ALL NER',
+  'ASSAM',
+  'ARUNACHAL PRADESH',
+  'MEGHALAYA',
+  'MANIPUR',
+  'MIZORAM',
+  'NAGALAND',
+  'TRIPURA',
+  'SIKKIM'
+];
+
 export const NewsCenter = () => {
-  const { lang, setLang, t, stateFilter, setStateFilter, setActiveTab, nerStates } = useApp();
+  const { lang, setLang, t, stateFilter, setStateFilter, setActiveTab, addIncidentReport } = useApp();
 
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  // State management for API filtering and options
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [selectedLocation, setSelectedLocation] = useState(() => {
+    return stateFilter && stateFilter !== 'all' ? stateFilter.toUpperCase() : 'ALL NER';
+  });
+  const [selectedSeverity, setSelectedSeverity] = useState('ALL');
+  const [sortBy, setSortBy] = useState('relevance');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isDemoMode] = useState(false);
+
+  // Feed status & data state
+  const [articlesList, setArticlesList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [providerStatus, setProviderStatus] = useState('LIVE_EXTERNAL_FEED');
+  const [isCached, setIsCached] = useState(false);
+  const [lastRetrievedAt, setLastRetrievedAt] = useState(null);
+  const [errorNotice, setErrorNotice] = useState(null);
+  const [refreshNotice, setRefreshNotice] = useState(false);
+
+  // Modal state
   const [activeArticleModal, setActiveArticleModal] = useState(null);
+  const [aiSummaryData, setAiSummaryData] = useState(null);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [sharedNotice, setSharedNotice] = useState(false);
-  const [isCrawling, setIsCrawling] = useState(false);
-  const [crawlNotice, setCrawlNotice] = useState(false);
+  const [leadNotice, setLeadNotice] = useState(null);
 
-  // Active translation language for article content (uses global app language directly)
-  const currentNewsLang = lang;
+  // Synchronize global stateFilter with news location filter
+  useEffect(() => {
+    if (stateFilter && stateFilter !== 'all') {
+      setSelectedLocation(stateFilter.toUpperCase());
+    }
+  }, [stateFilter]);
 
-  const handleCrawlNews = () => {
-    setIsCrawling(true);
-    setCrawlNotice(false);
-    setTimeout(() => {
-      setIsCrawling(false);
-      setCrawlNotice(true);
-      setTimeout(() => setCrawlNotice(false), 4000);
-    }, 1200);
+  // Debounce search query input (300ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Image fallback resolver
+  const resolveNewsImage = (title = '', summary = '', category = '', image_url = null) => {
+    if (image_url && image_url.startsWith('http')) return image_url;
+    const text = (title + " " + summary).toLowerCase();
+
+    if (text.includes("landslide") || text.includes("rockfall") || text.includes("debris") || text.includes("mudslide")) {
+      return "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80";
+    }
+    if (text.includes("rain") || text.includes("monsoon") || text.includes("fog") || text.includes("imd") || text.includes("cloudburst") || text.includes("flood") || text.includes("teesta")) {
+      return "https://images.unsplash.com/photo-1428592953211-077101b2021b?auto=format&fit=crop&w=800&q=80";
+    }
+    if (text.includes("truck") || text.includes("convoy") || text.includes("freight") || text.includes("fci") || text.includes("vaccine") || text.includes("supply") || text.includes("logistics")) {
+      return "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=800&q=80";
+    }
+    if (text.includes("bro") || text.includes("bridge") || text.includes("highway") || text.includes("tunnel") || text.includes("construction") || text.includes("road")) {
+      return "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=80";
+    }
+    if (text.includes("rail") || text.includes("train") || text.includes("nfr") || text.includes("station")) {
+      return "https://images.unsplash.com/photo-1474487548417-781cb71495f3?auto=format&fit=crop&w=800&q=80";
+    }
+    return "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
   };
 
-  // Filter articles based on category, state, and search query
-  const filteredArticles = regionalNewsArticles.filter((article) => {
-    // Category filter
-    if (selectedCategory !== 'all' && article.category !== selectedCategory) {
-      return false;
-    }
-    // State filter
-    if (stateFilter !== 'all' && article.state !== stateFilter) {
-      return false;
-    }
-    // Search query filter
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
-      const titleMatch = (article.title[currentNewsLang] || article.title.en).toLowerCase().includes(q);
-      const summaryMatch = (article.summary[currentNewsLang] || article.summary.en).toLowerCase().includes(q);
-      const sourceMatch = article.source.toLowerCase().includes(q);
-      if (!titleMatch && !summaryMatch && !sourceMatch) return false;
-    }
-    return true;
-  });
+  // Fetch news feed from backend API
+  const fetchNewsFeed = useCallback(async (forceRefresh = false) => {
+    setIsLoading(true);
+    setErrorNotice(null);
 
-  const featuredArticle = filteredArticles[0] || regionalNewsArticles[0];
+    const response = await api.getNewsFeed({
+      category: selectedCategory,
+      location: selectedLocation,
+      severity: selectedSeverity,
+      q: debouncedSearch,
+      sortBy: sortBy,
+      isDemo: isDemoMode,
+      refresh: forceRefresh
+    });
+
+    setIsLoading(false);
+
+    if (response && response.articles) {
+      setArticlesList(response.articles);
+      setProviderStatus(response.provider_status || 'LIVE_EXTERNAL_FEED');
+      setIsCached(response.is_cached || false);
+      setLastRetrievedAt(response.retrieved_at || new Date().toLocaleTimeString());
+
+      if (response.provider_status === 'CACHED_FALLBACK_DEMO') {
+        setErrorNotice('External news provider temporarily unreachable. Showing cached intelligence feed.');
+      }
+
+      if (forceRefresh) {
+        setRefreshNotice(true);
+        setTimeout(() => setRefreshNotice(false), 3500);
+      }
+    } else {
+      setErrorNotice('News service temporarily unavailable. Please retry or toggle Demo Mode.');
+      setArticlesList([]);
+    }
+  }, [selectedCategory, selectedLocation, selectedSeverity, debouncedSearch, sortBy, isDemoMode]);
+
+  useEffect(() => {
+    fetchNewsFeed(false);
+
+    // Auto-refresh live news feed every 5 hours (18,000,000 ms)
+    const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
+    const intervalId = setInterval(() => {
+      fetchNewsFeed(true);
+    }, FIVE_HOURS_MS);
+
+    return () => clearInterval(intervalId);
+  }, [fetchNewsFeed]);
+
+  const handleManualRefresh = () => {
+    fetchNewsFeed(true);
+  };
 
   const handleShare = (article) => {
     setSharedNotice(article.id);
-    setTimeout(() => setSharedNotice(false), 3000);
+    setTimeout(() => setSharedNotice(false), 2500);
   };
 
-  const getLanguageLabel = (code) => {
-    switch (code) {
-      case 'as': return t.langAssamese || 'অসমীয়া';
-      case 'bn': return t.langBengali || 'বাংলা';
-      case 'hi': return t.langHindi || 'हिन्दी';
-      case 'mn': return t.langManipuri || 'ꯃꯩꯇꯩꯂꯣᓐ';
-      default: return t.langEnglish || 'English';
+  // Request optional Bedrock / AI factual summary
+  const handleGenerateAiSummary = async (articleId) => {
+    setIsGeneratingAi(true);
+    const summaryRes = await api.getArticleAISummary(articleId);
+    setIsGeneratingAi(false);
+    if (summaryRes) {
+      setAiSummaryData(summaryRes);
     }
   };
 
-  const getCategoryLabel = (cat) => {
-    switch (cat) {
-      case 'alerts': return t.newsCategoryAlerts || 'Emergency & Disasters';
-      case 'travel': return t.newsCategoryTravel || 'Tourist Advisories';
-      case 'logistics': return t.newsCategoryLogistics || 'Freight & Freight Supply';
-      case 'govt': return t.newsCategoryGovt || 'Border & Infra Projects';
-      default: return t.newsCategoryAll || 'All Categories';
+  // Requirement 17: Operational Connection — Convert news article into an Unverified External Report
+  const handleConvertToOperationalLead = async (article) => {
+    const reportRes = await api.convertToUnverifiedReport(article.id);
+
+    const unverifiedLead = {
+      title: `[Unverified External Report] ${article.title}`,
+      type: article.category === 'FLOOD' ? 'flood' : (article.category === 'LANDSLIDE' ? 'landslide' : 'roadblock'),
+      severity: article.severity || 'HIGH',
+      state: (article.location || 'ASSAM').toLowerCase(),
+      locationName: `${article.location} Corridor (Source: ${article.source})`,
+      lat: 26.1445,
+      lng: 91.7362,
+      description: `UNVERIFIED EXTERNAL REPORT — Requires commander verification before operational dispatch.\n\nSource: ${article.source} (${article.source_url})\nPublished: ${article.published_at}\nRetrieved: ${article.retrieved_at}\n\nHeadline: ${article.title}\nSummary: ${article.summary}`,
+      reporter: `Unverified External Report (${article.source})`,
+      photoUrl: resolveNewsImage(article.title, article.summary, article.category, article.image_url)
+    };
+
+    addIncidentReport(unverifiedLead);
+    setLeadNotice(article.id);
+    setTimeout(() => {
+      setLeadNotice(null);
+      setActiveArticleModal(null);
+      setActiveTab('incidents'); // Navigate to Field Reporter / Incidents tab
+    }, 1200);
+  };
+
+  const getSeverityBadgeClass = (sev) => {
+    switch (sev) {
+      case 'CRITICAL': return 'blocked';
+      case 'HIGH': return 'caution';
+      case 'MODERATE': return 'caution';
+      default: return 'clear';
     }
   };
+
+  const featuredArticle = articlesList[0];
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
-      {/* Top Header & Search Bar */}
-      <div className="glass-panel" style={{ padding: '16px 20px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+      
+      {/* Top Header & Interactive Control Toolbar */}
+      <div className="glass-panel" style={{ padding: '18px 20px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Newspaper size={24} color="#2563EB" />
-              <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
-                {t.navNews}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Newspaper size={26} color="#2563EB" />
+              <h2 className="section-title" style={{ fontSize: '1.25rem', margin: 0 }}>
+                {t.navNews || "Disaster & Logistics Intelligence Feed"}
               </h2>
-              <span className="pill clear" style={{ fontSize: '0.7rem', padding: '3px 8px' }}>
-                {t.liveFeed || "LIVE FEED"}
-              </span>
             </div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: '3px' }}>
-              {t.newsSub || "Classified regional bulletins, disaster warnings & safe travel updates in 5 North-Eastern languages."}
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: '4px' }}>
+              Real-time regional intelligence feed mapping transit blockades, extreme weather, and emergency logistics across Northeast India.
             </p>
           </div>
 
-          {/* Quick Search & Clean Language Selector */}
+          {/* Action Toolbar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <button
-              onClick={handleCrawlNews}
-              disabled={isCrawling}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                background: 'rgba(37, 99, 235, 0.12)',
-                border: '1px solid #2563EB',
-                color: '#2563EB',
-                fontSize: '0.74rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <Radio size={14} className={isCrawling ? 'sos-pulse' : ''} />
-              {isCrawling ? 'Crawling NER News & BRO Feeds...' : '⚡ Sync Live Regional Feeds'}
-            </button>
-
-            <div style={{ position: 'relative', width: '200px' }}>
+            {/* Search Field with Debouncing */}
+            <div style={{ position: 'relative', width: '240px' }}>
               <Search size={14} color="var(--color-muted)" style={{ position: 'absolute', left: '10px', top: '9px' }} />
               <input
                 type="text"
                 className="form-input"
-                placeholder={t.searchHeadlines || "Search headlines..."}
+                placeholder="Search landslide, flood, NH-2..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ paddingLeft: '30px', height: '32px', fontSize: '0.76rem' }}
               />
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', padding: '4px 10px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-              <Globe size={14} color="#2563EB" />
-              <select
-                className="custom-select"
-                value={lang}
-                onChange={(e) => setLang(e.target.value)}
-                style={{ height: '26px', fontSize: '0.74rem', background: 'transparent', border: 'none', fontWeight: 800, cursor: 'pointer' }}
-              >
-                <option value="en">English</option>
-                <option value="as">অসমীয়া (Assamese)</option>
-                <option value="bn">বাংলা (Bengali)</option>
-                <option value="hi">हिन्दी (Hindi)</option>
-                <option value="mn">ꯃꯩꯇꯩꯂꯣᓐ (Manipuri)</option>
-              </select>
-            </div>
           </div>
         </div>
 
-        {crawlNotice && (
+        {/* Notifications & System Alerts */}
+        {refreshNotice && (
           <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10B981', color: '#059669', fontSize: '0.76rem', fontWeight: 700 }}>
-            ✅ Real News Feed Synchronized: Fetched latest ground reports from IMD Guwahati, BRO Vartak Command, and State Disaster Operations Centers in all 5 regional languages.
+            ✅ Feed Synchronized: Retransmitted queries across IMD, BRO Vartak/Swastik commands, and State Operations Centers.
+          </div>
+        )}
+
+        {errorNotice && (
+          <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '6px', background: 'rgba(220, 38, 38, 0.12)', border: '1px solid #DC2626', color: '#DC2626', fontSize: '0.76rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>⚠️ {errorNotice}</span>
+            <button onClick={handleManualRefresh} style={{ background: '#DC2626', color: '#FFF', border: 'none', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer' }}>
+              Retry
+            </button>
           </div>
         )}
 
         {/* Category Classification Chips Bar */}
         <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-muted)', marginRight: '4px' }}>
-            {t.classificationLabel || "Classification:"}
+            Categories:
           </span>
 
-          <button
-            onClick={() => setSelectedCategory('all')}
-            className={`demo-chip-btn ${selectedCategory === 'all' ? 'active' : ''}`}
-            style={{ background: selectedCategory === 'all' ? '#2563EB' : undefined, color: selectedCategory === 'all' ? '#FFF' : undefined }}
-          >
-            🌐 {t.newsCategoryAll}
-          </button>
+          {CATEGORIES_LIST.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`demo-chip-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+              style={{
+                background: selectedCategory === cat.id ? '#2563EB' : undefined,
+                color: selectedCategory === cat.id ? '#FFF' : undefined,
+                padding: '4px 10px',
+                fontSize: '0.72rem'
+              }}
+            >
+              {cat.icon} {getLocalizedCategory(cat.id, lang)}
+            </button>
+          ))}
+        </div>
 
-          <button
-            onClick={() => setSelectedCategory('alerts')}
-            className={`demo-chip-btn ${selectedCategory === 'alerts' ? 'active' : ''}`}
-            style={{ background: selectedCategory === 'alerts' ? '#DC2626' : undefined, color: selectedCategory === 'alerts' ? '#FFF' : undefined }}
-          >
-            🚨 {t.newsCategoryAlerts}
-          </button>
+        {/* Secondary Filter & Sorting Control Toolbar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '10px' }}>
+          
+          {/* Location Selection Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-muted)' }}>
+              Location Filter:
+            </span>
+            <select
+              className="custom-select"
+              value={selectedLocation}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedLocation(val);
+                if (val !== 'ALL NER') {
+                  setStateFilter(val.toLowerCase());
+                } else {
+                  setStateFilter('all');
+                }
+              }}
+              style={{ height: '30px', fontSize: '0.76rem', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 700 }}
+            >
+              {LOCATIONS_LIST.map((loc) => (
+                <option key={loc} value={loc}>
+                  📍 {getLocalizedLocation(loc, lang)}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <button
-            onClick={() => setSelectedCategory('travel')}
-            className={`demo-chip-btn ${selectedCategory === 'travel' ? 'active' : ''}`}
-            style={{ background: selectedCategory === 'travel' ? '#D97706' : undefined, color: selectedCategory === 'travel' ? '#FFF' : undefined }}
-          >
-            🏔️ {t.newsCategoryTravel}
-          </button>
+          {/* Severity Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-muted)' }}>
+              Severity:
+            </span>
+            <select
+              className="custom-select"
+              value={selectedSeverity}
+              onChange={(e) => setSelectedSeverity(e.target.value)}
+              style={{ height: '30px', fontSize: '0.76rem', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 700 }}
+            >
+              <option value="ALL">All Severities</option>
+              <option value="CRITICAL">🔴 CRITICAL</option>
+              <option value="HIGH">🟠 HIGH</option>
+              <option value="MODERATE">🟡 MODERATE</option>
+              <option value="LOW">🔵 LOW</option>
+            </select>
+          </div>
 
-          <button
-            onClick={() => setSelectedCategory('logistics')}
-            className={`demo-chip-btn ${selectedCategory === 'logistics' ? 'active' : ''}`}
-            style={{ background: selectedCategory === 'logistics' ? '#059669' : undefined, color: selectedCategory === 'logistics' ? '#FFF' : undefined }}
-          >
-            🚚 {t.newsCategoryLogistics}
-          </button>
+          {/* Sorting Control */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ArrowUpDown size={14} color="var(--color-muted)" />
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-muted)' }}>
+              Sort By:
+            </span>
+            <select
+              className="custom-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{ height: '30px', fontSize: '0.76rem', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 700 }}
+            >
+              <option value="relevance">⚡ Most Relevant (NERIS Score)</option>
+              <option value="newest">🕒 Newest First</option>
+              <option value="severity">🚨 Highest Severity</option>
+            </select>
+          </div>
 
-          <button
-            onClick={() => setSelectedCategory('govt')}
-            className={`demo-chip-btn ${selectedCategory === 'govt' ? 'active' : ''}`}
-            style={{ background: selectedCategory === 'govt' ? '#7C3AED' : undefined, color: selectedCategory === 'govt' ? '#FFF' : undefined }}
-          >
-            🏛️ {t.newsCategoryGovt}
-          </button>
         </div>
       </div>
 
-      {/* Active Language & State Context Bar */}
-      <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text)', flexShrink: 0, flexWrap: 'wrap', gap: '8px' }}>
+      {/* Operational Disclaimer & Metadata Bar */}
+      <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.76rem', color: 'var(--color-text)', flexShrink: 0, flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Flame size={16} color="#DC2626" />
-          <span>
-            {t.activeView || "Active View:"} <strong style={{ color: '#2563EB' }}>{getLanguageLabel(currentNewsLang)}</strong>
-            {stateFilter !== 'all' && <span> {t.forState || "for"} <strong style={{ color: '#059669' }}>{(t.stateNames && t.stateNames[stateFilter]) || stateFilter}</strong></span>}
+          <ShieldAlert size={15} color="#D97706" />
+          <span style={{ color: 'var(--color-muted)', fontSize: '0.72rem' }}>
+            <em>"External reports are informational and should be independently verified before operational decisions."</em>
           </span>
         </div>
 
-        <span style={{ color: 'var(--color-muted)', fontSize: '0.72rem' }}>
-          {filteredArticles.length} {t.showingBulletins || "verified news bulletins"}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.72rem' }}>
+          {lastRetrievedAt && (
+            <span style={{ color: 'var(--color-muted)' }}>
+              Last synchronized: <strong>{lastRetrievedAt}</strong> {isCached && '(Cached)'}
+            </span>
+          )}
+          <span style={{ fontWeight: 800, color: '#2563EB' }}>
+            {articlesList.length} articles found
+          </span>
+        </div>
       </div>
 
       {/* Featured Top Headline Story (Hero Banner) */}
-      {featuredArticle && (
+      {featuredArticle && !isLoading && (
         <div className="glass-panel" style={{ padding: '20px', position: 'relative', overflow: 'hidden', flexShrink: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', alignItems: 'center' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                <span className={`pill ${featuredArticle.urgency === 'critical' ? 'blocked' : 'caution'}`} style={{ fontSize: '0.72rem' }}>
-                  {t.featuredHeadline || "FEATURED HEADLINE"} • {getCategoryLabel(featuredArticle.category)}
+                <span className={`pill ${getSeverityBadgeClass(featuredArticle.severity)}`} style={{ fontSize: '0.72rem', fontWeight: 800 }}>
+                  FEATURED • {getLocalizedCategory(featuredArticle.category, lang)} • {getLocalizedSeverity(featuredArticle.severity, lang)}
                 </span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)', fontWeight: 600 }}>
-                  📍 {(t.stateNames && t.stateNames[featuredArticle.state]) || featuredArticle.state}
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)', fontWeight: 700 }}>
+                  📍 {getLocalizedLocation(featuredArticle.location, lang)}
                 </span>
+                <span className="pill clear" style={{ fontSize: '0.64rem' }}>
+                  Score: {featuredArticle.relevance_score}
+                </span>
+                <span className="pill clear" style={{ fontSize: '0.64rem' }}>LIVE FEED</span>
               </div>
 
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.3, marginBottom: '8px' }}>
-                {featuredArticle.title[currentNewsLang] || featuredArticle.title.en}
+                {getLocalizedNewsText(featuredArticle.title, lang)}
               </h3>
 
               <p style={{ fontSize: '0.84rem', color: 'var(--color-muted)', lineHeight: 1.5, marginBottom: '14px' }}>
-                {featuredArticle.summary[currentNewsLang] || featuredArticle.summary.en}
+                {getLocalizedNewsText(featuredArticle.summary, lang)}
               </p>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => setActiveArticleModal(featuredArticle)}
                   className="btn-primary"
                   style={{ width: 'auto', padding: '8px 16px', fontSize: '0.78rem', minHeight: '38px' }}
                 >
-                  <BookOpen size={15} /> {t.readFullBulletin || "Read Full Bulletin"}
+                  <BookOpen size={15} /> Read Full Intelligence Bulletin
                 </button>
 
+                {/* Requirement 17: Operational Lead Button */}
                 <button
-                  onClick={() => setActiveTab('map')}
-                  style={{ background: 'transparent', border: '1px solid var(--color-border)', color: '#2563EB', padding: '8px 14px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  onClick={() => handleConvertToOperationalLead(featuredArticle)}
+                  style={{
+                    background: 'rgba(217, 119, 6, 0.12)',
+                    border: '1px solid #D97706',
+                    color: '#D97706',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
                 >
-                  <MapPin size={15} /> {t.viewCorridorOnMap || "View Corridor on GIS Map"}
+                  <FileWarning size={15} /> Flag as Unverified Report
                 </button>
 
-                <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Clock size={13} /> {featuredArticle.timestamp} • {featuredArticle.source}
-                </span>
+                <a
+                  href={featuredArticle.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--color-border)',
+                    color: '#2563EB',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <ExternalLink size={14} /> Read Source
+                </a>
+              </div>
+
+              <div style={{ marginTop: '12px', fontSize: '0.72rem', color: 'var(--color-muted)', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                <span>Source: <strong>{featuredArticle.source}</strong></span>
+                <span>Published: <strong>{featuredArticle.published_at}</strong></span>
+                <span>Retrieved: <strong>{featuredArticle.retrieved_at}</strong></span>
               </div>
             </div>
 
-            <div style={{ position: 'relative', height: '180px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+            <div style={{ position: 'relative', height: '190px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
               <img
-                src={featuredArticle.image}
+                src={resolveNewsImage(featuredArticle.title, featuredArticle.summary, featuredArticle.category, featuredArticle.image_url)}
                 alt="News Feature"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
-              <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(0,0,0,0.75)', color: '#FFF', padding: '3px 8px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 700 }}>
-                {getLanguageLabel(featuredArticle.language)}
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Classified News Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px', flex: 1 }}>
-        {filteredArticles.map((article) => {
-          const headlineText = article.title[currentNewsLang] || article.title.en;
-          const summaryText = article.summary[currentNewsLang] || article.summary.en;
-          const isShared = sharedNotice === article.id;
+      {/* Loading Skeleton */}
+      {isLoading && (
+        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--color-muted)' }}>
+          <RefreshCw size={28} className="sos-pulse" style={{ marginBottom: '10px' }} />
+          <p style={{ fontWeight: 700 }}>Fetching NERIS Disaster & Logistics Feed...</p>
+        </div>
+      )}
 
-          return (
-            <div
-              key={article.id}
-              className="glass-panel"
-              style={{
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                borderRadius: '12px'
-              }}
-            >
-              <div>
-                {/* Clean Top Badges Row (Prevents Overlap) */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '6px' }}>
-                  <span className={`pill ${article.urgency === 'critical' ? 'blocked' : article.urgency === 'warning' ? 'caution' : 'clear'}`} style={{ fontSize: '0.64rem', padding: '2px 8px' }}>
-                    {getCategoryLabel(article.category)}
-                  </span>
-                  <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-muted)', background: 'rgba(37, 99, 235, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
-                    📍 {(t.stateNames && t.stateNames[article.state]) || article.state}
-                  </span>
+      {/* Empty State */}
+      {!isLoading && articlesList.length === 0 && (
+        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--color-muted)' }}>
+          <FileWarning size={36} color="#9CA3AF" style={{ marginBottom: '10px' }} />
+          <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>No Matching Bulletins Found</h4>
+          <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>
+            No disaster or transit articles matched your search filter criteria. Try adjusting your search query, location, or severity.
+          </p>
+          <button
+            onClick={() => {
+              setSelectedCategory('ALL');
+              setSelectedLocation('ALL NER');
+              setSelectedSeverity('ALL');
+              setSearchQuery('');
+            }}
+            className="btn-primary"
+            style={{ width: 'auto', margin: '14px auto 0', padding: '6px 16px', fontSize: '0.76rem' }}
+          >
+            Clear All Filters
+          </button>
+        </div>
+      )}
+
+      {/* Classified News Grid */}
+      {!isLoading && articlesList.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px', flex: 1 }}>
+          {articlesList.map((article) => {
+            const isShared = sharedNotice === article.id;
+            const isLeadAdded = leadNotice === article.id;
+
+            return (
+              <div
+                key={article.id}
+                className="glass-panel"
+                style={{
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  borderRadius: '12px'
+                }}
+              >
+                <div>
+                  {/* Card Header Badges */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '6px', flexWrap: 'wrap' }}>
+                    <span className={`pill ${getSeverityBadgeClass(article.severity)}`} style={{ fontSize: '0.64rem', padding: '2px 8px' }}>
+                      {getLocalizedCategory(article.category, lang)} • {getLocalizedSeverity(article.severity, lang)}
+                    </span>
+
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-muted)', background: 'rgba(37, 99, 235, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                      📍 {getLocalizedLocation(article.location, lang)}
+                    </span>
+
+                    <span className="pill clear" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>LIVE FEED</span>
+                  </div>
+
+                  {/* Article Image Container */}
+                  <div style={{ position: 'relative', height: '140px', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px', border: '1px solid var(--color-border)' }}>
+                    <img
+                      src={resolveNewsImage(article.title, article.summary, article.category, article.image_url)}
+                      alt={article.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0, 0, 0, 0.75)', color: '#FFF', padding: '2px 6px', borderRadius: '4px', fontSize: '0.62rem', fontWeight: 700 }}>
+                      Score: {article.relevance_score}
+                    </div>
+                  </div>
+
+                  {/* Article Title */}
+                  <h4 style={{ fontSize: '0.94rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.35, marginBottom: '8px', minHeight: '40px' }}>
+                    {getLocalizedNewsText(article.title, lang)}
+                  </h4>
+
+                  {/* Article Summary */}
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', lineHeight: 1.45, marginBottom: '12px' }}>
+                    {getLocalizedNewsText(article.summary, lang)}
+                  </p>
                 </div>
 
-                {/* Article Image Container */}
-                <div style={{ position: 'relative', height: '140px', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px', border: '1px solid var(--color-border)' }}>
-                  <img
-                    src={article.image}
-                    alt={headlineText}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0, 0, 0, 0.75)', color: '#FFF', padding: '2px 6px', borderRadius: '4px', fontSize: '0.62rem', fontWeight: 700 }}>
-                    {getLanguageLabel(article.language)}
+                {/* Card Footer with Timestamps & Actions */}
+                <div style={{ paddingTop: '10px', borderTop: '1px solid var(--color-border)' }}>
+                  
+                  {/* Source & Timestamps */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '10px', fontSize: '0.7rem', color: 'var(--color-muted)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Source: <strong>{article.source}</strong></span>
+                      <span>Pub: <strong>{article.published_at}</strong></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Retrieved: <strong>{article.retrieved_at}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => setActiveArticleModal(article)}
+                      className="btn-primary"
+                      style={{ flex: 1, minHeight: '34px', fontSize: '0.74rem', padding: '4px 8px' }}
+                    >
+                      <BookOpen size={14} /> Read Bulletin
+                    </button>
+
+                    <a
+                      href={article.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
+                        color: '#2563EB',
+                        borderRadius: '6px',
+                        padding: '0 10px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        textDecoration: 'none',
+                        height: '34px'
+                      }}
+                    >
+                      <ExternalLink size={14} /> Read Source
+                    </a>
+
+                    {/* Operational Lead Conversion */}
+                    <button
+                      onClick={() => handleConvertToOperationalLead(article)}
+                      title="Convert article to an Unverified External Report in Field Reporter"
+                      style={{
+                        background: isLeadAdded ? 'rgba(16, 185, 129, 0.15)' : 'rgba(217, 119, 6, 0.1)',
+                        border: isLeadAdded ? '1px solid #10B981' : '1px solid #D97706',
+                        color: isLeadAdded ? '#059669' : '#D97706',
+                        borderRadius: '6px',
+                        padding: '0 8px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        height: '34px'
+                      }}
+                    >
+                      {isLeadAdded ? <CheckCircle2 size={14} /> : <FileWarning size={14} />}
+                      {isLeadAdded ? 'Logged!' : 'Investigate'}
+                    </button>
                   </div>
                 </div>
-
-                {/* Article Title */}
-                <h4 style={{ fontSize: '0.94rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.35, marginBottom: '8px', minHeight: '40px' }}>
-                  {headlineText}
-                </h4>
-
-                {/* Article Summary */}
-                <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', lineHeight: 1.45, marginBottom: '14px' }}>
-                  {summaryText}
-                </p>
               </div>
-
-              {/* Card Footer */}
-              <div style={{ paddingTop: '10px', borderTop: '1px solid var(--color-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.72rem', color: 'var(--color-muted)' }}>
-                  <span>{article.source}</span>
-                  <span>{article.timestamp}</span>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => setActiveArticleModal(article)}
-                    className="btn-primary"
-                    style={{ flex: 1, minHeight: '34px', fontSize: '0.74rem', padding: '4px 8px' }}
-                  >
-                    {t.readBulletin || "Read Bulletin"}
-                  </button>
-
-                  <button
-                    onClick={() => handleShare(article)}
-                    style={{
-                      background: isShared ? 'rgba(16, 185, 129, 0.15)' : 'var(--color-surface)',
-                      border: isShared ? '1px solid #10B981' : '1px solid var(--color-border)',
-                      color: isShared ? '#059669' : 'var(--color-text)',
-                      borderRadius: '6px',
-                      padding: '0 10px',
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    {isShared ? <CheckCircle2 size={14} /> : <Share2 size={14} />}
-                    {isShared ? (t.shared || 'Shared!') : (t.share || 'Share')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Article Detail Modal View */}
       {activeArticleModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: '600px', background: 'var(--color-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--color-border)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '650px', background: 'var(--color-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--color-border)', maxHeight: '90vh', overflowY: 'auto' }}>
+            
+            {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
               <div>
-                <span className={`pill ${activeArticleModal.urgency === 'critical' ? 'blocked' : 'caution'}`}>
-                  {getCategoryLabel(activeArticleModal.category)} • {(t.stateNames && t.stateNames[activeArticleModal.state]) || activeArticleModal.state}
-                </span>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '8px', color: 'var(--color-text)' }}>
-                  {activeArticleModal.title[currentNewsLang] || activeArticleModal.title.en}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span className={`pill ${getSeverityBadgeClass(activeArticleModal.severity)}`}>
+                    {getLocalizedCategory(activeArticleModal.category, lang)} • {getLocalizedSeverity(activeArticleModal.severity, lang)}
+                  </span>
+                  <span style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--color-muted)' }}>
+                    📍 {getLocalizedLocation(activeArticleModal.location, lang)}
+                  </span>
+                  <span className="pill clear" style={{ fontSize: '0.64rem' }}>LIVE EXTERNAL FEED</span>
+                </div>
+
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '8px', color: 'var(--color-text)', lineHeight: 1.35 }}>
+                  {getLocalizedNewsText(activeArticleModal.title, lang)}
                 </h3>
               </div>
+
               <button
-                onClick={() => setActiveArticleModal(null)}
-                style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-muted)' }}
+                onClick={() => {
+                  setActiveArticleModal(null);
+                  setAiSummaryData(null);
+                }}
+                style={{ background: 'transparent', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: 'var(--color-muted)' }}
               >
                 ✕
               </button>
             </div>
 
+            {/* Banner Image */}
             <img
-              src={activeArticleModal.image}
-              alt="Article"
-              style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px', marginBottom: '14px' }}
+              src={resolveNewsImage(activeArticleModal.title, activeArticleModal.summary, activeArticleModal.category, activeArticleModal.image_url)}
+              alt="Article Banner"
+              style={{ width: '100%', height: '220px', objectFit: 'cover', borderRadius: '10px', marginBottom: '14px', border: '1px solid var(--color-border)' }}
             />
 
-            <div style={{ fontSize: '0.86rem', color: 'var(--color-text)', lineHeight: 1.6, marginBottom: '16px' }}>
-              <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: '10px' }}>
-                {activeArticleModal.fullContent?.[currentNewsLang] || activeArticleModal.fullContent?.en || activeArticleModal.summary[currentNewsLang] || activeArticleModal.summary.en}
+            {/* Article Content Summary */}
+            <div style={{ fontSize: '0.88rem', color: 'var(--color-text)', lineHeight: 1.6, marginBottom: '16px' }}>
+              <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: '14px' }}>
+                {getLocalizedNewsText(activeArticleModal.summary, lang)}
               </p>
-              <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)', fontSize: '0.78rem', color: 'var(--color-muted)' }}>
-                <strong>English Parallel Translation:</strong> {activeArticleModal.fullContent?.en || activeArticleModal.summary.en}
+
+              {/* Relevance Score Breakdown Box */}
+              <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)', fontSize: '0.78rem', color: 'var(--color-muted)', marginBottom: '14px' }}>
+                <strong style={{ color: '#2563EB' }}>NERIS Relevance Scoring: {activeArticleModal.relevance_score}/100</strong>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '6px', fontSize: '0.72rem' }}>
+                  <span>Location: +{activeArticleModal.relevance_breakdown?.location_relevance || 0}</span>
+                  <span>Disaster: +{activeArticleModal.relevance_breakdown?.disaster_relevance || 0}</span>
+                  <span>Transport: +{activeArticleModal.relevance_breakdown?.transport_relevance || 0}</span>
+                  <span>Recency: +{activeArticleModal.relevance_breakdown?.recency_score || 0}</span>
+                </div>
+              </div>
+
+              {/* Requirement 16: Optional Amazon Bedrock AI Summary Section */}
+              {aiSummaryData ? (
+                <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(124, 58, 237, 0.1)', border: '1px solid #7C3AED', color: 'var(--color-text)', fontSize: '0.8rem', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#7C3AED', fontWeight: 800, marginBottom: '4px' }}>
+                    <Sparkles size={16} /> Amazon Bedrock Factual AI Summary
+                  </div>
+                  <p style={{ lineHeight: 1.5 }}>{aiSummaryData.ai_summary}</p>
+                  <p style={{ fontSize: '0.7rem', color: '#7C3AED', marginTop: '6px', fontWeight: 700 }}>
+                    ⚠️ {aiSummaryData.disclaimer}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleGenerateAiSummary(activeArticleModal.id)}
+                  disabled={isGeneratingAi}
+                  style={{
+                    background: 'rgba(124, 58, 237, 0.12)',
+                    border: '1px solid #7C3AED',
+                    color: '#7C3AED',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginBottom: '14px'
+                  }}
+                >
+                  <Sparkles size={15} className={isGeneratingAi ? 'sos-pulse' : ''} />
+                  {isGeneratingAi ? 'Generating Factual Bedrock AI Summary...' : 'Generate Factual AI Summary'}
+                </button>
+              )}
+            </div>
+
+            {/* Source Transparency & Operational Disclaimer */}
+            <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.74rem', color: 'var(--color-muted)', marginBottom: '16px' }}>
+              <div>Publisher Source: <strong>{activeArticleModal.source}</strong></div>
+              <div>Published: <strong>{activeArticleModal.published_at}</strong> | Retrieved by NERIS: <strong>{activeArticleModal.retrieved_at}</strong></div>
+              <div style={{ marginTop: '4px', color: '#D97706', fontSize: '0.7rem' }}>
+                <em>External reports are informational and should be independently verified before operational decisions.</em>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>
-              <span style={{ fontSize: '0.74rem', color: 'var(--color-muted)' }}>
-                {t.sourceLabel || "Source:"} {activeArticleModal.source} • {activeArticleModal.timestamp}
-              </span>
-              <button
-                onClick={() => {
-                  setActiveArticleModal(null);
-                  setActiveTab('map');
-                }}
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '14px', borderTop: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '10px' }}>
+              
+              <a
+                href={activeArticleModal.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn-primary"
-                style={{ width: 'auto', padding: '6px 14px', fontSize: '0.76rem' }}
+                style={{ width: 'auto', padding: '8px 16px', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                <MapPin size={14} /> {t.openGisMapVector || "Open GIS Map Vector"}
+                <ExternalLink size={15} /> Read Original Source
+              </a>
+
+              {/* Requirement 17: Operational Connection */}
+              <button
+                onClick={() => handleConvertToOperationalLead(activeArticleModal)}
+                style={{
+                  background: 'rgba(217, 119, 6, 0.15)',
+                  border: '1px solid #D97706',
+                  color: '#D97706',
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <FileWarning size={15} /> Investigate in NERIS (Create Unverified Report)
               </button>
+
             </div>
           </div>
         </div>

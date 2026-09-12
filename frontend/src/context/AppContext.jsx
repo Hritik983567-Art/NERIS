@@ -22,7 +22,33 @@ export const AppProvider = ({ children }) => {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  // Check backend FastAPI server status on mount
+  // Persistent NERIS Command Alerts State
+  const [alerts, setAlerts] = useState([
+    {
+      id: "ALT-1001",
+      incident_id: "INC-8921",
+      severity: "CRITICAL",
+      title: "CRITICAL INCIDENT ALERT: Mudslide at Dima Hasao NH-27 Corridor",
+      message: "Severe mudslide reported by field officer. Massive blockage endangering convoys along NH-27.",
+      created_at: new Date().toISOString(),
+      status: "ACTIVE",
+      delivery_mode: "Internal NERIS Alert"
+    },
+    {
+      id: "ALT-1002",
+      incident_id: "INC-7703",
+      severity: "HIGH",
+      title: "HIGH SEVERITY ALERT: Highway Inundation at Silchar Bypass",
+      message: "Barak River overflow causing flash inundation across 2.5km section.",
+      created_at: new Date(Date.now() - 3600000).toISOString(),
+      status: "ACKNOWLEDGED",
+      acknowledged_by: "Cmdr. R. Gogoi",
+      acknowledged_at: new Date(Date.now() - 1800000).toISOString(),
+      delivery_mode: "Internal NERIS Alert"
+    }
+  ]);
+
+  // Check backend FastAPI server status & initial data sync
   useEffect(() => {
     api.checkHealth().then((health) => {
       if (health && (health.status === 'HEALTHY' || health.status === 'online')) {
@@ -78,8 +104,63 @@ export const AppProvider = ({ children }) => {
             });
           }
         });
+
+        // Sync persistent backend alerts
+        api.getAlerts().then((backendAlerts) => {
+          if (backendAlerts && Array.isArray(backendAlerts) && backendAlerts.length > 0) {
+            setAlerts(backendAlerts);
+          }
+        });
+
+        // Sync initial disasters & live RSS news into broadcast alerts stack
+        api.getExternalDisasters().then((disasterData) => {
+          if (disasterData && disasterData.records && disasterData.records.length > 0) {
+            const liveAlerts = disasterData.records.map((rec, idx) => ({
+              id: rec.id || `live-disaster-${idx}`,
+              title: rec.title,
+              type: rec.severity === 'CRITICAL' ? 'sos' : 'warning',
+              timestamp: rec.published_at || 'LIVE',
+              source: rec.source || 'IMD / NDMA Live Feed'
+            }));
+            setBroadcastAlerts((prev) => {
+              const existingIds = new Set(prev.map(a => a.id));
+              const newItems = liveAlerts.filter(a => !existingIds.has(a.id));
+              return [...newItems, ...prev];
+            });
+          }
+        });
+
+        // Sync initial live news feed into broadcast alerts
+        api.getNewsFeed({ isDemo: false }).then((newsRes) => {
+          if (newsRes && newsRes.articles && newsRes.articles.length > 0) {
+            const liveNewsAlerts = newsRes.articles.slice(0, 5).map((art, idx) => ({
+              id: art.id || `live-news-${idx}`,
+              title: art.title,
+              type: art.severity === 'CRITICAL' ? 'warning' : 'disruption',
+              timestamp: art.published_at || 'LIVE',
+              source: art.source || 'Regional Live RSS'
+            }));
+            setBroadcastAlerts((prev) => {
+              const existingIds = new Set(prev.map(a => a.id));
+              const newItems = liveNewsAlerts.filter(a => !existingIds.has(a.id));
+              return [...newItems, ...prev];
+            });
+          }
+        });
       }
     });
+  }, []);
+
+  // Poll persistent alerts from backend every 4 seconds
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      const backendAlerts = await api.getAlerts();
+      if (backendAlerts && Array.isArray(backendAlerts) && backendAlerts.length > 0) {
+        setAlerts(backendAlerts);
+      }
+    };
+    const alertInterval = setInterval(fetchAlerts, 4000);
+    return () => clearInterval(alertInterval);
   }, []);
 
   // Dynamic datasets state
@@ -147,63 +228,77 @@ export const AppProvider = ({ children }) => {
     return res;
   };
 
-  // Real-time animated telemetry simulation for fleets + backend stream
+  // Real-time backend telemetry simulation polling (Zero Math.random() in React)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setFleets((prevFleets) => {
-        const updated = prevFleets.map((fleet) => {
-          if (fleet.speedKm > 0) {
-            // Subtle simulated GPS movement along route
-            const latDelta = (Math.random() - 0.5) * 0.003;
-            const lngDelta = (Math.random() - 0.5) * 0.003;
-            return {
-              ...fleet,
-              lat: +(fleet.lat + latDelta).toFixed(4),
-              lng: +(fleet.lng + lngDelta).toFixed(4)
-            };
-          }
-          return fleet;
+    const fetchSimulatedTelemetry = async () => {
+      const simData = await api.getSimulatedTelemetry();
+      if (simData && Array.isArray(simData) && simData.length > 0) {
+        setFleets((prevFleets) => {
+          return prevFleets.map((fleet) => {
+            const match = simData.find((s) => s.vehicle_id === fleet.id);
+            if (match) {
+              return {
+                ...fleet,
+                lat: match.latitude,
+                lng: match.longitude,
+                speedKm: match.speed,
+                heading: match.heading,
+                fuelPercent: match.fuel,
+                status: match.status,
+                current_route: match.current_route,
+                last_updated: match.last_updated,
+                route_at_risk: match.route_at_risk,
+                at_risk_hazard_info: match.at_risk_hazard_info,
+                driver: match.driver_name || fleet.driver,
+                phone: match.driver_phone || fleet.phone,
+                category: match.category || fleet.category,
+                payload: match.payload || fleet.payload,
+                origin: match.origin || fleet.origin,
+                destination: match.destination || fleet.destination
+              };
+            }
+            return fleet;
+          });
         });
+      }
+    };
 
-        // Trigger backend ping for lead medical convoy periodically
-        const leadVehicle = updated.find(f => f.id === 'NER-MED-8041') || updated[0];
-        if (leadVehicle && isOnline) {
-          api.pingTelemetry({
-            vehicle_id: leadVehicle.id,
-            driver_name: leadVehicle.driverName || "Ramesh Kalita",
-            driver_phone: leadVehicle.driverPhone || "+91 98640 11234",
-            current_lat: leadVehicle.lat,
-            current_lng: leadVehicle.lng,
-            speed_kmh: leadVehicle.speedKm || 38.5,
-            cargo_type: "MEDICINE",
-            destination_district: leadVehicle.destination || "Silchar / Barak Valley Depot",
-            timestamp: new Date().toISOString(),
-            heading_degrees: 120.0
-          }).then((res) => {
-            if (res && res.hazard_in_proximity) {
-              setBroadcastAlerts((prev) => {
-                if (prev.some(a => a.id.startsWith(`lead-prox-`))) return prev;
-                return [
-                  {
-                    id: `lead-prox-${Date.now()}`,
-                    title: `⚡ LIVE GPS ALERT: ${res.warning_message}`,
-                    type: "warning",
-                    timestamp: "JUST NOW",
-                    source: "FastAPI Telemetry Proximity Engine (20km Geodesic Check)"
-                  },
-                  ...prev
-                ];
-              });
+    fetchSimulatedTelemetry();
+    const interval = setInterval(fetchSimulatedTelemetry, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Real-time backend incident polling (AWS DynamoDB Sync)
+  useEffect(() => {
+    const fetchLiveIncidents = async () => {
+      const liveData = await api.getIncidents();
+      if (liveData && Array.isArray(liveData) && liveData.length > 0) {
+        setIncidents((prevIncidents) => {
+          const merged = [...prevIncidents];
+          liveData.forEach((liveItem) => {
+            const index = merged.findIndex((i) => i.id === liveItem.id);
+            const normalizedItem = {
+              ...liveItem,
+              is_live: true,
+              lat: liveItem.lat || liveItem.latitude,
+              lng: liveItem.lng || liveItem.longitude,
+              locationName: liveItem.location_name || liveItem.locationName || "NER Corridor"
+            };
+            if (index >= 0) {
+              merged[index] = { ...merged[index], ...normalizedItem };
+            } else {
+              merged.unshift(normalizedItem);
             }
           });
-        }
+          return merged;
+        });
+      }
+    };
 
-        return updated;
-      });
-    }, 4000);
-
+    fetchLiveIncidents();
+    const interval = setInterval(fetchLiveIncidents, 4000);
     return () => clearInterval(interval);
-  }, [isOnline]);
+  }, []);
 
   const t = translations[lang] || translations.en;
 
@@ -219,26 +314,78 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const addIncidentReport = (report) => {
+  const addIncidentReport = async (report) => {
+    const incId = report.id || `INC-${Date.now().toString().slice(-4)}`;
+
+    let finalEvidenceUrl = report.photoUrl || "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957";
+    let evidenceStatus = report.photoFile ? "PENDING" : "NONE";
+    let s3Confirmed = false;
+    let uploadedAt = null;
+
+    if (isOnline && report.photoFile) {
+      const formData = new FormData();
+      formData.append('file', report.photoFile);
+      formData.append('incident_id', incId);
+
+      const s3Res = await api.uploadEvidence(formData);
+      if (s3Res && (s3Res.s3_confirmed || s3Res.status === 'UPLOADED')) {
+        finalEvidenceUrl = s3Res.evidence_url;
+        evidenceStatus = "UPLOADED";
+        s3Confirmed = true;
+        uploadedAt = s3Res.uploaded_at;
+      } else if (s3Res && s3Res.status === 'FAILED') {
+        return {
+          status: 'FAILED',
+          error: s3Res.error || 'Amazon S3 evidence upload failed.',
+          s3_confirmed: false,
+          dynamodb_confirmed: false
+        };
+      }
+    }
+
     const newIncident = {
-      id: `INC-${Date.now().toString().slice(-4)}`,
+      id: incId,
       title: report.title,
       type: report.type,
       severity: report.severity,
       state: report.state,
+      district: report.state,
       locationName: report.locationName,
+      location_name: report.locationName,
       lat: parseFloat(report.lat),
       lng: parseFloat(report.lng),
-      timestamp: "Just Now",
+      latitude: parseFloat(report.lat),
+      longitude: parseFloat(report.lng),
+      timestamp: new Date().toISOString(),
       reporter: report.reporter || "Field Officer (Mobile Upload)",
       description: report.description,
-      photoUrl: report.photoUrl || "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80",
+      photoUrl: finalEvidenceUrl,
+      evidence_url: finalEvidenceUrl,
+      evidence_status: evidenceStatus,
+      uploaded_at: uploadedAt,
       alternateAvailable: true,
       affectedConvoys: []
     };
 
     if (isOnline) {
+      // Persist directly to AWS DynamoDB
+      const ddbRes = await api.createIncident(newIncident);
+      const isDdbConfirmed = Boolean(ddbRes && (ddbRes.dynamodb_confirmed || ddbRes.status === 'CREATED'));
+
+      if (!isDdbConfirmed && ddbRes && ddbRes.status === 'FAILED') {
+        return {
+          status: 'FAILED',
+          error: ddbRes.error || 'DynamoDB persistence failed.',
+          s3_confirmed: s3Confirmed,
+          dynamodb_confirmed: false
+        };
+      }
+
+      newIncident.status = isDdbConfirmed ? 'SYNCED' : 'SUBMITTED';
+      newIncident.dynamodb_confirmed = isDdbConfirmed;
+
       setIncidents((prev) => [newIncident, ...prev]);
+
       // Also trigger a broadcast alert
       setBroadcastAlerts((prev) => [
         {
@@ -250,11 +397,42 @@ export const AppProvider = ({ children }) => {
         },
         ...prev
       ]);
-      return { status: 'synced', data: newIncident };
+
+      // Automatically trigger Backend Incident Risk Evaluation Workflow
+      api.evaluateIncidentRisk({
+        id: newIncident.id,
+        title: newIncident.title,
+        type: newIncident.type,
+        severity: newIncident.severity,
+        district: newIncident.state,
+        description: newIncident.description
+      }).then((result) => {
+        if (result && result.alert_generated && result.alert) {
+          setAlerts((prev) => {
+            const exists = prev.some(a => a.id === result.alert.id);
+            if (!exists) return [result.alert, ...prev];
+            return prev.map(a => a.id === result.alert.id ? result.alert : a);
+          });
+        }
+      });
+
+      return {
+        status: isDdbConfirmed ? 'synced' : 'submitted',
+        dynamodb_confirmed: isDdbConfirmed,
+        s3_confirmed: s3Confirmed,
+        data: newIncident
+      };
     } else {
       // Offline mode: store in local offline queue
+      newIncident.status = 'PENDING';
+      newIncident.evidence_status = 'PENDING';
       setOfflineQueue((prev) => [newIncident, ...prev]);
-      return { status: 'queued', data: newIncident };
+      return {
+        status: 'queued',
+        dynamodb_confirmed: false,
+        s3_confirmed: false,
+        data: newIncident
+      };
     }
   };
 
@@ -272,6 +450,23 @@ export const AppProvider = ({ children }) => {
       },
       ...prev
     ]);
+
+    // Evaluate offline synced incidents against risk model
+    offlineQueue.forEach((item) => {
+      api.evaluateIncidentRisk({
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        severity: item.severity,
+        district: item.state,
+        description: item.description
+      }).then((result) => {
+        if (result && result.alert_generated && result.alert) {
+          setAlerts((prev) => [result.alert, ...prev]);
+        }
+      });
+    });
+
     setOfflineQueue([]);
   };
 
@@ -315,17 +510,75 @@ export const AppProvider = ({ children }) => {
 
   const isAuthenticated = !!user;
 
-  const login = (officerId, role, hub) => {
+  const isCommander = Boolean(
+    user &&
+    !user.isPublic &&
+    (user.role?.toLowerCase().includes('commander') ||
+     user.role?.toLowerCase().includes('cmd') ||
+     user.id?.startsWith('NER-CMD'))
+  );
+
+  const acknowledgeCommandAlert = async (alertId) => {
+    const actorName = user?.name || "Cmdr. R. Gogoi";
+    const res = await api.acknowledgeAlert(alertId, actorName);
+    const updatedObj = res?.alert || (res?.id ? res : null);
+    if (updatedObj) {
+      setAlerts((prev) => prev.map((a) => (a.id === alertId ? updatedObj : a)));
+    } else {
+      setAlerts((prev) =>
+        prev.map((a) =>
+          a.id === alertId
+            ? {
+                ...a,
+                status: 'ACKNOWLEDGED',
+                acknowledged_by: actorName,
+                acknowledged_at: new Date().toISOString()
+              }
+            : a
+        )
+      );
+    }
+  };
+
+  const resolveCommandAlert = async (alertId) => {
+    const actorName = user?.name || "Cmdr. R. Gogoi";
+    const res = await api.resolveAlert(alertId, actorName);
+    const updatedObj = res?.alert || (res?.id ? res : null);
+    if (updatedObj) {
+      setAlerts((prev) => prev.map((a) => (a.id === alertId ? updatedObj : a)));
+    } else {
+      setAlerts((prev) =>
+        prev.map((a) =>
+          a.id === alertId
+            ? {
+                ...a,
+                status: 'RESOLVED',
+                resolved_by: actorName,
+                resolved_at: new Date().toISOString()
+              }
+            : a
+        )
+      );
+    }
+  };
+
+  const login = async (officerId, password, role, hub) => {
+    const cognitoRes = await api.loginCognito(officerId, password, role);
+
+    const userRole = cognitoRes?.user?.role || role || "COMMANDER";
     const newUser = {
       id: officerId || "NER-CMD-8041",
       name: officerId ? `Officer ${officerId.toUpperCase()}` : "Cmdr. R. Gogoi",
-      role: role || "Disaster Logistics Commander",
+      role: userRole,
       hub: hub || "Guwahati Central Depot",
       isPublic: false,
+      authProvider: cognitoRes?.user?.auth_provider || "Development Fallback Mode (Demo)",
+      cognitoConfirmed: cognitoRes?.user?.cognito_confirmed || false,
       loginTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setUser(newUser);
     localStorage.setItem('ner_user', JSON.stringify(newUser));
+    return cognitoRes;
   };
 
   const loginAsPublic = (name, phone, userType, destinationState) => {
@@ -336,6 +589,7 @@ export const AppProvider = ({ children }) => {
       role: userType || "Tourist / Traveler",
       hub: destinationState ? `Destination: ${destinationState}` : "NER Public Travel Portal",
       isPublic: true,
+      authProvider: "Public Travel Security Pass",
       loginTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setUser(publicUser);
@@ -345,6 +599,8 @@ export const AppProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('ner_user');
+    localStorage.removeItem('cognito_token');
+    localStorage.removeItem('cognito_user');
   };
 
   return (
@@ -365,6 +621,10 @@ export const AppProvider = ({ children }) => {
         syncOfflineQueue,
         fleets,
         sendTelemetryPing,
+        alerts,
+        isCommander,
+        acknowledgeCommandAlert,
+        resolveCommandAlert,
         broadcastAlerts,
         triggerSOSAlert,
         nerStates,

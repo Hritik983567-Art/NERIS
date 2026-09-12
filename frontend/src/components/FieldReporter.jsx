@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   AlertTriangle,
@@ -8,7 +8,10 @@ import {
   CheckCircle2,
   Database,
   Camera,
-  FileText
+  FileText,
+  UploadCloud,
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
 
 export const FieldReporter = () => {
@@ -22,8 +25,8 @@ export const FieldReporter = () => {
   } = useApp();
 
   const [title, setTitle] = useState('');
-  const [type, setType] = useState('landslide');
-  const [severity, setSeverity] = useState('high');
+  const [type, setType] = useState('LANDSLIDE');
+  const [severity, setSeverity] = useState('HIGH');
   const [state, setState] = useState('assam');
   const [locationName, setLocationName] = useState('');
   const [lat, setLat] = useState('26.1433');
@@ -32,25 +35,51 @@ export const FieldReporter = () => {
   const [description, setDescription] = useState('');
 
   const [photoPreview, setPhotoPreview] = useState("https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80");
+  const [photoFile, setPhotoFile] = useState(null);
+  const [fileError, setFileError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState(null);
 
-  const handlePhotoSelect = () => {
-    const photos = [
-      "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=600&q=80"
-    ];
-    const random = photos[Math.floor(Math.random() * photos.length)];
-    setPhotoPreview(random);
+  const fileInputRef = useRef(null);
+
+  const handlePhotoClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Enforce 10MB file size limit
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setFileError("File size exceeds 10MB limit. Please select an image under 10MB.");
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      setFileError("Unsupported file type. Please upload JPG, PNG, or WEBP.");
+      return;
+    }
+
+    setFileError(null);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!title || !locationName) {
       alert("Please fill in the incident title and location name.");
       return;
     }
+
+    setIsSubmitting(true);
+    setSubmitFeedback(null);
 
     const report = {
       title,
@@ -62,19 +91,28 @@ export const FieldReporter = () => {
       lng,
       reporter,
       description: description || "No additional comments provided.",
-      photoUrl: photoPreview
+      photoUrl: photoPreview,
+      photoFile: photoFile
     };
 
-    const res = addIncidentReport(report);
-    setSubmitFeedback(res);
+    try {
+      const res = await addIncidentReport(report);
+      setSubmitFeedback(res);
 
-    setTitle('');
-    setLocationName('');
-    setDescription('');
-
-    setTimeout(() => {
-      setSubmitFeedback(null);
-    }, 4000);
+      if (res && res.status !== 'FAILED') {
+        setTitle('');
+        setLocationName('');
+        setDescription('');
+        setPhotoFile(null);
+      }
+    } catch (err) {
+      setSubmitFeedback({
+        status: 'FAILED',
+        error: err.message || 'Error submitting field report to central server.'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -101,31 +139,64 @@ export const FieldReporter = () => {
         {submitFeedback && (
           <div
             style={{
-              padding: '10px 14px',
+              padding: '12px 16px',
               borderRadius: '8px',
               marginBottom: '14px',
-              background: submitFeedback.status === 'synced' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-              border: submitFeedback.status === 'synced' ? '1px solid #10B981' : '1px solid #F59E0B',
-              color: submitFeedback.status === 'synced' ? '#34D399' : '#FBBF24',
+              background: submitFeedback.status === 'FAILED'
+                ? 'rgba(239, 68, 68, 0.15)'
+                : submitFeedback.status === 'synced'
+                ? 'rgba(16, 185, 129, 0.15)'
+                : 'rgba(245, 158, 11, 0.15)',
+              border: submitFeedback.status === 'FAILED'
+                ? '1px solid #EF4444'
+                : submitFeedback.status === 'synced'
+                ? '1px solid #10B981'
+                : '1px solid #F59E0B',
+              color: submitFeedback.status === 'FAILED'
+                ? '#FCA5A5'
+                : submitFeedback.status === 'synced'
+                ? '#34D399'
+                : '#FBBF24',
               display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
+              flexDirection: 'column',
+              gap: '6px',
               flexShrink: 0
             }}
           >
-            <CheckCircle2 size={18} />
-            <div>
-              <strong style={{ fontSize: '0.86rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {submitFeedback.status === 'FAILED' ? (
+                <AlertCircle size={20} color="#EF4444" />
+              ) : (
+                <CheckCircle2 size={20} />
+              )}
+              <strong style={{ fontSize: '0.88rem' }}>
                 {submitFeedback.status === 'synced'
-                  ? (t.fieldReportUploaded || 'Field Report Uploaded to Central Server!')
+                  ? (t.fieldReportUploaded || 'Field Report Synced to Cloud Server!')
+                  : submitFeedback.status === 'submitted'
+                  ? 'Field Report Submitted!'
+                  : submitFeedback.status === 'FAILED'
+                  ? 'Report Submission Failed'
                   : (t.savedToOfflineQueue || 'Saved to Local Offline Queue!')}
               </strong>
-              <p style={{ fontSize: '0.75rem' }}>
-                {submitFeedback.status === 'synced'
-                  ? (t.advisoryBroadcasted || 'Broadcast notification & GIS map pin updated in real time.')
-                  : (t.offlineNotice || 'Report stored safely in local buffer. Will auto-sync when network returns.')}
-              </p>
             </div>
+
+            {submitFeedback.status === 'FAILED' ? (
+              <p style={{ fontSize: '0.78rem', margin: 0, color: '#EF4444' }}>
+                {submitFeedback.error || 'Server error occurred during transmission.'}
+              </p>
+            ) : (
+              <div style={{ fontSize: '0.75rem', display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '4px' }}>
+                  <Database size={12} />
+                  DynamoDB Status: <strong>{submitFeedback.dynamodb_confirmed ? 'SYNCED' : 'PENDING'}</strong>
+                </span>
+
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '4px' }}>
+                  <UploadCloud size={12} />
+                  Amazon S3 Evidence: <strong>{submitFeedback.s3_confirmed ? 'UPLOADED' : (photoFile ? 'PENDING' : 'NO EVIDENCE')}</strong>
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -152,10 +223,13 @@ export const FieldReporter = () => {
                 value={type}
                 onChange={(e) => setType(e.target.value)}
               >
-                <option value="landslide">🌋 {t.landslideRisk || "Landslide / Rockfall"}</option>
-                <option value="flood">🌊 {t.floodAlert || "Flash Flood / River Inundation"}</option>
-                <option value="bridge_out">🌉 {t.roadDamage || "Bridge Damage / Washout"}</option>
-                <option value="road_damage">🛣 {t.roadDamage || "Road Sinking / Subsidence"}</option>
+                <option value="LANDSLIDE">🌋 {t.landslideRisk || "Landslide / Rockfall"}</option>
+                <option value="FLOOD">🌊 {t.floodAlert || "Flash Flood / River Inundation"}</option>
+                <option value="ROAD_BLOCKAGE">🛣 {t.roadDamage || "Road Blockage / Subsidence"}</option>
+                <option value="BRIDGE_DAMAGE">🌉 {t.roadDamage || "Bridge Damage / Washout"}</option>
+                <option value="ACCIDENT">🚗 {t.caution || "Traffic / Vehicle Accident"}</option>
+                <option value="WEATHER">⛈️ {t.caution || "Severe Weather / Storm"}</option>
+                <option value="OTHER">⚠️ {t.caution || "Other Emergency / Obstruction"}</option>
               </select>
             </div>
           </div>
@@ -169,9 +243,10 @@ export const FieldReporter = () => {
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value)}
               >
-                <option value="critical">🔴 {t.blocked || "Critical (Total Blockade)"}</option>
-                <option value="high">🟠 {t.caution || "High (Single Lane / Heavy Risk)"}</option>
-                <option value="medium">🟡 {t.clear || "Medium (Slow Moving)"}</option>
+                <option value="CRITICAL">🔴 {t.blocked || "Critical (Total Blockade)"}</option>
+                <option value="HIGH">🟠 {t.caution || "High (Single Lane / Heavy Risk)"}</option>
+                <option value="MEDIUM">🟡 {t.clear || "Medium (Slow Moving)"}</option>
+                <option value="LOW">🟢 Low / Minor Impact</option>
               </select>
             </div>
 
@@ -252,7 +327,16 @@ export const FieldReporter = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">{t.photoEvidence}</label>
+            <label className="form-label">{t.photoEvidence || "Photo Evidence (JPG, PNG, WEBP, max 10MB)"}</label>
+            
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
+
             <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
               <img
                 src={photoPreview}
@@ -261,14 +345,14 @@ export const FieldReporter = () => {
               />
               <button
                 type="button"
-                onClick={handlePhotoSelect}
+                onClick={handlePhotoClick}
                 style={{
                   minHeight: '44px',
                   padding: '8px 14px',
                   borderRadius: '6px',
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text)',
+                  background: photoFile ? 'rgba(16, 185, 129, 0.15)' : 'var(--color-surface)',
+                  border: photoFile ? '1px solid #10B981' : '1px solid var(--color-border)',
+                  color: photoFile ? '#34D399' : 'var(--color-text)',
                   fontSize: '0.78rem',
                   cursor: 'pointer',
                   display: 'flex',
@@ -276,14 +360,36 @@ export const FieldReporter = () => {
                   gap: '6px'
                 }}
               >
-                <Camera size={16} /> {t.capturePhoto}
+                <Camera size={16} />
+                {photoFile ? `Selected: ${photoFile.name.substring(0, 20)}...` : (t.capturePhoto || "Attach Photo Evidence")}
               </button>
+
+              {photoFile && (
+                <span style={{ fontSize: '0.72rem', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <ShieldCheck size={14} /> Ready for S3 Upload ({(photoFile.size / (1024 * 1024)).toFixed(2)} MB)
+                </span>
+              )}
             </div>
+
+            {fileError && (
+              <div style={{ color: '#EF4444', fontSize: '0.75rem', marginTop: '4px' }}>
+                ⚠️ {fileError}
+              </div>
+            )}
           </div>
 
-          <button type="submit" className="btn-primary" style={{ marginTop: 'auto', minHeight: '44px' }}>
-            <FileText size={16} />
-            {isOnline ? (t.submitReportBtn || "Submit Live Geo-Tagged Report") : (t.saveOfflineBtn || "Save to Offline Queue (No Network)")}
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={isSubmitting}
+            style={{ marginTop: 'auto', minHeight: '44px', opacity: isSubmitting ? 0.7 : 1 }}
+          >
+            {isSubmitting ? <RefreshCw className="animate-spin" size={16} /> : <FileText size={16} />}
+            {isSubmitting
+              ? "Uploading Evidence & Saving to DynamoDB..."
+              : isOnline
+              ? (t.submitReportBtn || "Submit Live Geo-Tagged Report")
+              : (t.saveOfflineBtn || "Save to Offline Queue (No Network)")}
           </button>
         </form>
       </div>
@@ -339,3 +445,4 @@ export const FieldReporter = () => {
     </div>
   );
 };
+
