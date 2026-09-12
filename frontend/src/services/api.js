@@ -46,11 +46,14 @@ export const api = {
     }
   },
 
-  // Health check
   checkHealth: async () => {
     try {
-      const res = await fetch('/health');
-      if (!res.ok) throw new Error('Health check failed');
+      const res = await fetch('/api/health');
+      if (!res.ok) {
+        const fallback = await fetch('/health');
+        if (!fallback.ok) throw new Error('Health check failed');
+        return await fallback.json();
+      }
       return await res.json();
     } catch (err) {
       return { status: 'offline', error: err.message };
@@ -117,15 +120,35 @@ export const api = {
     }
   },
 
-  // Telemetry Ping
+  // Telemetry Ping & Fleet Tracking
   pingTelemetry: async (telemetryPayload) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/telemetry/ping`, {
+      const res = await fetch(`${API_BASE_URL}/fleet/telemetry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(telemetryPayload)
       });
       if (!res.ok) throw new Error('Telemetry ping failed');
+      return await res.json();
+    } catch (err) {
+      return null;
+    }
+  },
+
+  getFleetVehicles: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/fleet`);
+      if (!res.ok) throw new Error('Failed to fetch active fleet');
+      return await res.json();
+    } catch (err) {
+      return null;
+    }
+  },
+
+  getFleetVehicleById: async (vehicleId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/fleet/${encodeURIComponent(vehicleId)}`);
+      if (!res.ok) throw new Error('Failed to fetch vehicle state');
       return await res.json();
     } catch (err) {
       return null;
@@ -225,24 +248,31 @@ export const api = {
   },
 
   // AI Terrain & Disaster-Aware Route Computation
-  calculateRoute: async (originNode, destinationNode, cargoType = 'MEDICINE', weightTons = 12.0, weather = 'MONSOON_STORM') => {
+  calculateRoute: async (originNode, destinationNode, cargoType = 'MEDICINE', weightTons = 12.0, weather = 'MONSOON_STORM', vehicleType = 'HEAVY_CONVOY') => {
     try {
       const res = await fetch(`${API_BASE_URL}/routes/compute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          origin: originNode,
+          destination: destinationNode,
           origin_node: originNode,
           destination_node: destinationNode,
+          vehicleType: vehicleType,
+          cargoType: cargoType,
           cargo_type: cargoType,
           convoy_weight_tons: weightTons,
           weather_condition: weather
         })
       });
-      if (!res.ok) throw new Error('Failed to compute route');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ detail: 'Failed to compute route' }));
+        throw new Error(errData.detail || 'Failed to compute route');
+      }
       return await res.json();
     } catch (err) {
       console.warn('Backend route computation error:', err.message);
-      return null;
+      return { error: err.message };
     }
   },
 
@@ -435,9 +465,13 @@ export const api = {
   // Dedicated Persistent Alerts & Risk Evaluation Workflow
   getAlerts: async (status = null) => {
     try {
-      const url = status ? `${API_BASE_URL}/alerts?status=${encodeURIComponent(status)}` : `${API_BASE_URL}/alerts`;
+      const url = status ? `/api/alerts?status=${encodeURIComponent(status)}` : `/api/alerts`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch alerts');
+      if (!res.ok) {
+        const fallback = await fetch(status ? `${API_BASE_URL}/alerts?status=${encodeURIComponent(status)}` : `${API_BASE_URL}/alerts`);
+        if (!fallback.ok) throw new Error('Failed to fetch alerts');
+        return await fallback.json();
+      }
       return await res.json();
     } catch (err) {
       console.warn('Backend alerts endpoint unavailable:', err.message);
@@ -445,9 +479,41 @@ export const api = {
     }
   },
 
+  createAlert: async (alertPayload) => {
+    try {
+      const res = await fetch(`/api/alerts`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(alertPayload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed to create alert');
+      return data;
+    } catch (err) {
+      console.warn('Backend alert creation error:', err.message);
+      return null;
+    }
+  },
+
+  updateAlertStatus: async (alertId, newStatus, commanderId = 'Commander', notes = null) => {
+    try {
+      const res = await fetch(`/api/alerts/${encodeURIComponent(alertId)}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ status: newStatus, commander_id: commanderId, notes })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed to update alert status');
+      return data;
+    } catch (err) {
+      console.warn('Backend alert status update error:', err.message);
+      return null;
+    }
+  },
+
   evaluateIncidentRisk: async (incidentData) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/alerts/evaluate-incident`, {
+      const res = await fetch(`/api/alerts/evaluate-incident`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(incidentData)
@@ -462,7 +528,7 @@ export const api = {
 
   acknowledgeAlert: async (alertId, acknowledgedBy = 'Commander') => {
     try {
-      const res = await fetch(`${API_BASE_URL}/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+      const res = await fetch(`/api/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
         method: 'PATCH',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ action_by: acknowledgedBy })
@@ -477,7 +543,7 @@ export const api = {
 
   resolveAlert: async (alertId, resolvedBy = 'Commander') => {
     try {
-      const res = await fetch(`${API_BASE_URL}/alerts/${encodeURIComponent(alertId)}/resolve`, {
+      const res = await fetch(`/api/alerts/${encodeURIComponent(alertId)}/resolve`, {
         method: 'PATCH',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ action_by: resolvedBy })

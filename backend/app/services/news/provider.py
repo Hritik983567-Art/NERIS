@@ -213,6 +213,12 @@ class LiveRSSNewsProvider(BaseNewsProvider):
                 if art.id not in seen_keys:
                     seen_keys.add(art.id)
                     articles.append(art)
+                    # Persist normalized news article to AWS DynamoDB table ('ner_news_articles')
+                    try:
+                        from app.adapters.aws_dynamodb import get_dynamodb_adapter
+                        get_dynamodb_adapter().save_news_article(art.dict())
+                    except Exception as db_err:
+                        logger.warning(f"Failed to persist article '{art.id}' to DynamoDB: {db_err}")
 
         return articles
 
@@ -245,6 +251,11 @@ class DemoNewsProvider(BaseNewsProvider):
                 is_demo=True
             )
             articles.append(art)
+            try:
+                from app.adapters.aws_dynamodb import get_dynamodb_adapter
+                get_dynamodb_adapter().save_news_article(art.dict())
+            except Exception:
+                pass
 
         return articles
 

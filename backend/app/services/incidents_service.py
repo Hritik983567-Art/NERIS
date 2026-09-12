@@ -25,6 +25,18 @@ class IncidentsService:
         """
         return self.dynamodb.save_incident(incident_data)
 
+    def get_incident_by_id(self, incident_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves a single incident by ID from AWS DynamoDB.
+        """
+        return self.dynamodb.get_incident_by_id(incident_id)
+
+    def update_incident(self, incident_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Updates an existing incident in AWS DynamoDB.
+        """
+        return self.dynamodb.update_incident(incident_id, updates)
+
     def upload_evidence(self, file_bytes: bytes, filename: str, content_type: str) -> Dict[str, Any]:
         """
         Uploads a field evidence photo to Amazon S3.

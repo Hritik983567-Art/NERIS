@@ -55,6 +55,7 @@ export const AIRoutePlanner = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [routeError, setRouteError] = useState(null);
   const [selectedRouteType, setSelectedRouteType] = useState("primary");
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
   const [liveWeatherCategory, setLiveWeatherCategory] = useState("MONSOON_STORM");
@@ -75,10 +76,8 @@ export const AIRoutePlanner = () => {
   const handleCalculate = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setRouteError(null);
     setDispatchSuccess(false);
-
-    const originNode = origin.split(' ')[0];
-    const destNode = destination.split(' ')[0];
 
     const cargoTypeMap = {
       "Life-Saving Vaccines & Insulin (Cold-Chain)": "MEDICINE",
@@ -89,30 +88,34 @@ export const AIRoutePlanner = () => {
     };
 
     const cargoEnum = cargoTypeMap[commodity] || "MEDICINE";
-    const apiResponse = await api.calculateRoute(originNode, destNode, cargoEnum, convoyWeight, liveWeatherCategory);
+    const apiResponse = await api.calculateRoute(origin, destination, cargoEnum, convoyWeight, liveWeatherCategory);
 
-    if (apiResponse && apiResponse.path_nodes) {
+    if (apiResponse && apiResponse.error) {
+      setRouteError(apiResponse.error);
+    } else if (apiResponse && (apiResponse.path_nodes || apiResponse.geometry)) {
       setRouteResult({
-        route_id: apiResponse.route_id || `route-${Date.now()}`,
-        origin: origin,
-        destination: destination,
-        path_nodes: apiResponse.path_nodes,
+        routeId: apiResponse.routeId || apiResponse.route_id || `route-${Date.now()}`,
+        origin: apiResponse.origin || origin,
+        destination: apiResponse.destination || destination,
+        path_nodes: apiResponse.path_nodes || [],
+        geometry: apiResponse.geometry || [],
         distance: apiResponse.distance !== undefined ? apiResponse.distance : apiResponse.total_distance_km,
-        estimated_time: apiResponse.estimated_time !== undefined ? apiResponse.estimated_time : apiResponse.disaster_adjusted_eta_hours,
-        risk_score: apiResponse.risk_score !== undefined ? apiResponse.risk_score : Math.round(100 - apiResponse.safety_score),
-        risk_factors: apiResponse.risk_factors || ["Monsoon rainfall corridor penalty", "Bridge capacity threshold check"],
+        duration: apiResponse.duration !== undefined ? apiResponse.duration : apiResponse.estimated_time || apiResponse.disaster_adjusted_eta_hours,
+        estimated_time: apiResponse.estimated_time !== undefined ? apiResponse.estimated_time : apiResponse.duration,
+        riskScore: apiResponse.riskScore !== undefined ? apiResponse.riskScore : apiResponse.risk_score,
+        risk_score: apiResponse.riskScore !== undefined ? apiResponse.riskScore : apiResponse.risk_score,
+        riskLevel: apiResponse.riskLevel || apiResponse.risk_level || "MODERATE",
+        risk_level: apiResponse.riskLevel || apiResponse.risk_level || "MODERATE",
+        riskFactors: apiResponse.riskFactors || apiResponse.risk_factors || [],
+        risk_factors: apiResponse.riskFactors || apiResponse.risk_factors || [],
         blocked_segments: apiResponse.blocked_segments || [],
-        alternate_route: apiResponse.alternate_route || (apiResponse.alternate_paths?.[0] ? {
-          route_name: apiResponse.alternate_paths[0].route_name,
-          path_nodes: apiResponse.alternate_paths[0].path_nodes,
-          distance: apiResponse.alternate_paths[0].total_distance_km,
-          estimated_time: apiResponse.alternate_paths[0].disaster_adjusted_eta_hours,
-          risk_score: 42.0,
-          rationale: "Secondary state highway detour fallback."
-        } : null),
-        decision_explanation: apiResponse.decision_explanation || `Primary Route selected via ${apiResponse.path_nodes.join(' ➔ ')} based on deterministic Dijkstra shortest time calculation.`,
-        data_source_mode: apiResponse.data_source_mode || "DEMO/SIMULATION"
+        alternate_route: apiResponse.alternate_route || null,
+        decision_explanation: apiResponse.decision_explanation || `Primary Route calculated via ${apiResponse.path_nodes?.join(' ➔ ')}.`,
+        bedrock_explanation: apiResponse.bedrock_explanation || null,
+        data_source_mode: apiResponse.data_source_mode || "NERIS_GRAPH_OSRM"
       });
+    } else {
+      setRouteError("Failed to calculate route from backend risk engine.");
     }
     setLoading(false);
   };
@@ -263,6 +266,14 @@ export const AIRoutePlanner = () => {
             Risk Index: {routeResult.risk_score}/100
           </span>
         </div>
+
+        {/* Route Error Alert */}
+        {routeError && (
+          <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #EF4444', color: '#FCA5A5', marginBottom: '14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <AlertTriangle size={16} color="#EF4444" />
+            <span><strong>Routing Calculation Notice:</strong> {routeError}</span>
+          </div>
+        )}
 
         {/* --- EXPLICIT ROUTE DECISION RATIONALE PANEL --- */}
         <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.3)', marginBottom: '14px', flexShrink: 0 }}>

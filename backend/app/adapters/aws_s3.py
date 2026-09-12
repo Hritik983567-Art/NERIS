@@ -44,15 +44,18 @@ class S3StorageAdapter:
         """
         Validates file format & size, generates unique object name, and uploads to Amazon S3.
         """
+        # 0. Path Traversal & Filename Sanitization
+        safe_filename = os.path.basename(filename).replace("..", "").replace("/", "").replace("\\", "")
+
         # 1. File Size Validation (Max 10MB)
         file_size = len(file_bytes)
         if file_size > MAX_FILE_SIZE_BYTES:
             raise ValueError(f"File size {round(file_size / 1024 / 1024, 2)}MB exceeds maximum allowed limit of 10MB.")
 
         # 2. File Type Validation (JPG, JPEG, PNG, WEBP)
-        extension = filename.split(".")[-1].lower() if "." in filename else "jpg"
-        if extension not in ALLOWED_EXTENSIONS and content_type.lower() not in ALLOWED_CONTENT_TYPES:
-            raise ValueError(f"Invalid file extension '.{extension}'. Allowed image formats: JPG, JPEG, PNG, WEBP.")
+        extension = safe_filename.split(".")[-1].lower() if "." in safe_filename else "jpg"
+        if extension not in ALLOWED_EXTENSIONS or content_type.lower() not in ALLOWED_CONTENT_TYPES:
+            raise ValueError(f"Invalid file extension '.{extension}' or MIME type '{content_type}'. Allowed image formats: JPG, JPEG, PNG, WEBP.")
 
         # 3. Unique Object Naming
         timestamp_str = int(time.time())

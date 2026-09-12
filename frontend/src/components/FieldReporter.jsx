@@ -394,49 +394,110 @@ export const FieldReporter = () => {
         </form>
       </div>
 
-      {/* Right Sidebar: Offline Queue */}
+      {/* Right Sidebar: IndexedDB Offline Queue */}
       <div className="sidebar-panel">
         <div className="glass-panel" style={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexShrink: 0 }}>
             <h3 className="section-title" style={{ fontSize: '0.92rem' }}>
               <Database size={16} color="#F59E0B" />
-              {t.offlineBuffer}
+              IndexedDB Queue
             </h3>
-            <span className="pill caution">{offlineQueue.length} {t.pendingCount || "Pending"}</span>
+            <span className="pill caution">
+              {offlineQueue.filter(i => i.status !== 'SYNCED').length} Pending
+            </span>
           </div>
 
           <p style={{ fontSize: '0.74rem', color: 'var(--color-muted)', marginBottom: '12px', flexShrink: 0 }}>
-            {t.offlineNotice || "Reports submitted in remote zero-connectivity zones are preserved locally in IndexedDB/LocalStorage."}
+            IndexedDB persistent queue for offline zero-connectivity zones. Retries with exponential backoff & idempotent DynamoDB processing.
           </p>
 
           <button
             onClick={syncOfflineQueue}
-            disabled={offlineQueue.length === 0 || !isOnline}
+            disabled={offlineQueue.filter(i => i.status !== 'SYNCED').length === 0 || !isOnline}
             className="btn-primary"
             style={{
               background: isOnline ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : '#334155',
               boxShadow: 'none',
-              opacity: offlineQueue.length === 0 ? 0.6 : 1,
+              opacity: offlineQueue.filter(i => i.status !== 'SYNCED').length === 0 ? 0.6 : 1,
               flexShrink: 0,
               minHeight: '44px'
             }}
           >
             <RefreshCw size={15} />
-            {t.syncNow}
+            {t.syncNow || "Sync IndexedDB Queue"}
           </button>
 
-          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto' }}>
+          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
             {offlineQueue.length > 0 ? (
-              offlineQueue.map((item, idx) => (
-                <div key={idx} className="item-card" style={{ borderLeft: '3px solid #B45309' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--color-text)' }}>{item.title}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>📍 {item.locationName}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#FBBF24', marginTop: '3px' }}>{t.savedToOfflineQueue || "Saved locally: Pending Sync"}</div>
-                </div>
-              ))
+              offlineQueue.map((item, idx) => {
+                const statusStr = item.status || 'PENDING SYNC';
+                const isSynced = statusStr === 'SYNCED';
+                const isSyncing = statusStr === 'SYNCING';
+                const isFailed = statusStr === 'FAILED';
+                const payload = item.payload || item;
+
+                return (
+                  <div
+                    key={item.localQueueId || idx}
+                    className="item-card"
+                    style={{
+                      borderLeft: `4px solid ${isSynced ? '#10B981' : isSyncing ? '#3B82F6' : isFailed ? '#EF4444' : '#F59E0B'}`,
+                      background: 'var(--color-surface)',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--color-text)' }}>
+                        {payload.title || item.title}
+                      </div>
+
+                      {/* Status Badge */}
+                      <span
+                        style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          background: isSynced
+                            ? 'rgba(16, 185, 129, 0.15)'
+                            : isSyncing
+                            ? 'rgba(59, 130, 246, 0.15)'
+                            : isFailed
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : 'rgba(245, 158, 11, 0.15)',
+                          color: isSynced ? '#10B981' : isSyncing ? '#3B82F6' : isFailed ? '#EF4444' : '#D97706',
+                          border: `1px solid ${isSynced ? '#10B981' : isSyncing ? '#3B82F6' : isFailed ? '#EF4444' : '#F59E0B'}`,
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {statusStr}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>
+                      📍 {payload.locationName || payload.location_name || 'NER Corridor'}
+                    </div>
+
+                    <div style={{ fontSize: '0.66rem', color: 'var(--color-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+                      <span>Key: <code>{(item.clientIncidentId || payload.id || '').substring(0, 14)}...</code></span>
+                      <span>Retries: {item.attemptCount || 0}</span>
+                    </div>
+
+                    {isFailed && item.error && (
+                      <div style={{ fontSize: '0.68rem', color: '#EF4444', marginTop: '2px' }}>
+                        ⚠️ Error: {item.error}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             ) : (
               <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.76rem', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                {t.noOfflinePending || "No pending offline reports. All field inputs are synced with the cloud."}
+                No pending offline reports in IndexedDB.
               </div>
             )}
           </div>

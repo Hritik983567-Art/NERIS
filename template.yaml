@@ -33,16 +33,64 @@ Resources:
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
 
-  # 2. Amazon S3 Bucket for Field Evidence Photos
+  # 1b. DynamoDB Table for Alerts
+  NerisAlertsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ner_alerts
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # 1c. DynamoDB Table for Disaster News Articles
+  NerisNewsArticlesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ner_news_articles
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # 1d. DynamoDB Table for Fleet Telemetry
+  NerisFleetTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ner_fleet_telemetry
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # 2. Amazon S3 Bucket for Field Evidence Photos (Hardened Security)
   NerisEvidenceBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: neris-evidence-photos-ap-south-1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
       CorsConfiguration:
         CorsRules:
-          - AllowedHeaders: ['*']
+          - AllowedHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date']
             AllowedMethods: ['GET', 'PUT', 'POST', 'HEAD']
-            AllowedOrigins: ['*']
+            AllowedOrigins: ['http://localhost:5173', 'http://127.0.0.1:5173']
             MaxAge: 3000
 
   # 3. Amazon Cognito User Pool for Commander & Officer Authentication
@@ -78,9 +126,9 @@ Resources:
       Cors:
         AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-        AllowOrigin: "'*'"
+        AllowOrigin: "'http://localhost:5173'"
 
-  # 5. AWS Lambda API Server Function (FastAPI Handler)
+  # 5. AWS Lambda API Server Function (FastAPI Handler with Least-Privilege Policies)
   NerisApiFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -89,8 +137,23 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref NerisIncidentsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NerisAlertsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NerisNewsArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NerisFleetTable
         - S3CrudPolicy:
             BucketName: !Ref NerisEvidenceBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: "*"
       Events:
         HealthApi:
           Type: Api

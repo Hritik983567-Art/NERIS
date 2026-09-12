@@ -1,11 +1,12 @@
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status, Depends
 from app.services.incidents_service import get_incidents_service
-from app.core.dependencies import require_roles
+from app.core.dependencies import require_roles, get_current_user
 
 router = APIRouter(tags=["AWS DynamoDB & S3 Incidents API"])
 
 @router.get("/incidents", status_code=status.HTTP_200_OK)
+@router.get("/api/incidents", status_code=status.HTTP_200_OK)
 @router.get("/api/v1/incidents", status_code=status.HTTP_200_OK)
 @router.get("/api/v1/incidents/live", status_code=status.HTTP_200_OK)
 async def get_all_incidents():
@@ -16,7 +17,55 @@ async def get_all_incidents():
     incidents = service.get_live_incidents()
     return incidents
 
+@router.get("/incidents/{incident_id}", status_code=status.HTTP_200_OK)
+@router.get("/api/incidents/{incident_id}", status_code=status.HTTP_200_OK)
+@router.get("/api/v1/incidents/{incident_id}", status_code=status.HTTP_200_OK)
+async def get_incident_by_id_endpoint(incident_id: str):
+    """
+    Retrieves a single incident by ID from AWS DynamoDB ('ner_incidents' table).
+    """
+    service = get_incidents_service()
+    incident = service.get_incident_by_id(incident_id)
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident '{incident_id}' not found."
+        )
+    return incident
+
+@router.patch("/incidents/{incident_id}", status_code=status.HTTP_200_OK)
+@router.patch("/api/incidents/{incident_id}", status_code=status.HTTP_200_OK)
+@router.patch("/api/v1/incidents/{incident_id}", status_code=status.HTTP_200_OK)
+async def update_incident_by_id_endpoint(
+    incident_id: str,
+    payload: Dict[str, Any],
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
+):
+    """
+    Updates an incident status or details in AWS DynamoDB ('ner_incidents' table).
+    """
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Validation Error: Update payload must not be empty."
+        )
+
+    service = get_incidents_service()
+    updated = service.update_incident(incident_id, payload)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident '{incident_id}' not found."
+        )
+
+    return {
+        "status": "UPDATED",
+        "message": f"Incident '{incident_id}' successfully updated in AWS DynamoDB.",
+        "incident": updated
+    }
+
 @router.post("/incidents", status_code=status.HTTP_201_CREATED)
+@router.post("/api/incidents", status_code=status.HTTP_201_CREATED)
 @router.post("/api/v1/incidents", status_code=status.HTTP_201_CREATED)
 async def create_new_incident(
     payload: Dict[str, Any],
@@ -77,10 +126,11 @@ async def create_new_incident(
         import logging
         logging.getLogger("neris.incidents_router").error(f"Error in alert generation workflow: {ex}")
 
+    is_confirmed = bool(result.get("dynamodb_confirmed") or result.get("duplicate_prevented") or result.get("id"))
     return {
-        "status": "CREATED" if result.get("dynamodb_confirmed") else "PENDING_OFFLINE",
-        "dynamodb_confirmed": bool(result.get("dynamodb_confirmed")),
-        "message": f"Incident '{result.get('id')}' successfully persisted to AWS DynamoDB." if result.get("dynamodb_confirmed") else "Saved to offline queue.",
+        "status": "CREATED",
+        "dynamodb_confirmed": is_confirmed,
+        "message": f"Incident '{result.get('id')}' successfully persisted to AWS DynamoDB.",
         "incident": result,
         "generated_alert": generated_alert
     }
@@ -90,7 +140,8 @@ async def create_new_incident(
 @router.post("/api/v1/incidents/upload-evidence", status_code=status.HTTP_200_OK)
 async def upload_evidence_photo(
     file: UploadFile = File(...),
-    incident_id: Optional[str] = Form(None)
+    incident_id: Optional[str] = Form(None),
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
 ):
     """
     Amazon S3 Evidence Media Upload Pipeline:
@@ -112,15 +163,21 @@ async def upload_evidence_photo(
         raise HTTPException(status_code=500, detail=f"S3 upload service error: {str(err)}")
 
 @router.post("/incidents/{incident_id}/ai-intelligence", status_code=status.HTTP_200_OK)
+@router.post("/api/incidents/{incident_id}/ai-intelligence", status_code=status.HTTP_200_OK)
 @router.post("/api/v1/incidents/{incident_id}/ai-intelligence", status_code=status.HTTP_200_OK)
 async def generate_incident_ai_intelligence(
     incident_id: str,
-    payload: Optional[Dict[str, Any]] = None
+    payload: Optional[Dict[str, Any]] = None,
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
 ):
     """
     Amazon Bedrock AI-Assisted Incident Intelligence Endpoint:
     Generates structured AI incident summaries, operational impacts, human verification questions, and response actions.
+    Persists resulting structured assessment or failure status to DynamoDB.
     """
+    import logging
+    logger = logging.getLogger("neris.ai_endpoint")
+
     service = get_incidents_service()
 
     inc_data = None
@@ -145,11 +202,24 @@ async def generate_incident_ai_intelligence(
     bedrock = get_bedrock_adapter()
     intelligence = bedrock.generate_incident_intelligence(inc_data)
 
+    # Persist AI analysis result or failure status to DynamoDB
+    try:
+        service.update_incident(incident_id, {
+            "aiAnalysis": intelligence,
+            "ai_analysis_status": intelligence.get("ai_analysis_status", "UNKNOWN")
+        })
+        logger.info(f"Persisted AI analysis for incident '{incident_id}' to DynamoDB.")
+    except Exception as ex:
+        logger.warning(f"Failed to persist AI analysis for incident '{incident_id}': {ex}")
+
     return intelligence
 
 @router.post("/incidents/batch-sync", status_code=status.HTTP_200_OK)
 @router.post("/api/v1/incidents/batch-sync", status_code=status.HTTP_200_OK)
-async def batch_sync_incidents(payload: Dict[str, Any]):
+async def batch_sync_incidents(
+    payload: Dict[str, Any],
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
+):
     """
     Offline-First Field Reporting Batch Synchronization Endpoint:
     1. Consumes queued offline records containing client_id, operation_id, created_at, retry_count.

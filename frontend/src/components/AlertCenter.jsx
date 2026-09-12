@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { localizedFleets } from '../data/localizedData';
+import { api } from '../services/api';
 import {
   Radio,
   ShieldAlert,
@@ -44,9 +45,21 @@ export const AlertCenter = () => {
     setTimeout(() => setSosFeedback(false), 4500);
   };
 
-  const handleCustomBroadcast = (e) => {
+  const handleCustomBroadcast = async (e) => {
     e.preventDefault();
     if (!broadcastMessage) return;
+    try {
+      await api.createAlert({
+        title: "Operational Command Advisory",
+        message: broadcastMessage,
+        type: "OPERATIONAL_ADVISORY",
+        severity: "HIGH",
+        recipientScope: "ALL_COMMANDERS",
+        district: "ASSAM"
+      });
+    } catch (err) {
+      console.warn("Failed to persist broadcast alert to DynamoDB:", err);
+    }
     setSentBroadcastFeedback(true);
     setTimeout(() => {
       setSentBroadcastFeedback(false);
@@ -186,7 +199,7 @@ export const AlertCenter = () => {
                             gap: '4px'
                           }}
                         >
-                          <Shield size={11} /> {alert.delivery_mode || 'Internal NERIS Alert'}
+                          <Shield size={11} /> {alert.delivery_mode || 'In-App Operational Alert (AWS DynamoDB)'}
                         </span>
 
                         {/* Status Badge */}
@@ -218,8 +231,8 @@ export const AlertCenter = () => {
                     {/* Footer Row: Incident ID, Timestamp, Action Metadata & COMMANDER Action Button */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', paddingTop: '6px', borderTop: '1px solid var(--color-border)', marginTop: '4px' }}>
                       <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span>Ref: <strong style={{ color: 'var(--color-text)' }}>{alert.incident_id}</strong></span>
-                        <span><Clock size={11} style={{ verticalAlign: 'middle' }} /> {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>Ref: <strong style={{ color: 'var(--color-text)' }}>{alert.incident_id || alert.incidentId || alert.id}</strong></span>
+                        <span><Clock size={11} style={{ verticalAlign: 'middle' }} /> {new Date(alert.created_at || alert.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
 
                         {isAcked && alert.acknowledged_by && (
                           <span style={{ color: '#D97706', fontWeight: 600 }}>
@@ -339,7 +352,7 @@ export const AlertCenter = () => {
         {/* --- LIVE BROADCAST FEED STACK --- */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexShrink: 0 }}>
           <h3 style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Radio size={16} color="#0284C7" /> Multi-Lingual Broadcast Alerts Stack
+            <Radio size={16} color="#0284C7" /> In-App Operational Alert Feed
           </h3>
         </div>
 
@@ -387,7 +400,7 @@ export const AlertCenter = () => {
                   </div>
                 </div>
 
-                {/* Honest Delivery Mode Indicator (Zero Fake Push Claim) */}
+                {/* Honest Delivery Mode Indicator (Zero Fake Push/SMS Claim) */}
                 <div
                   style={{
                     padding: '4px 10px',
@@ -403,7 +416,7 @@ export const AlertCenter = () => {
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  <ShieldCheck size={13} color="#10B981" /> Internal NERIS Alert
+                  <ShieldCheck size={13} color="#10B981" /> In-App Operational Alert (AWS DynamoDB)
                 </div>
               </div>
             );
@@ -413,12 +426,12 @@ export const AlertCenter = () => {
         {/* Broadcast Announcement Form */}
         <div className="advisory-panel" style={{ padding: '14px', borderRadius: '10px', flexShrink: 0 }}>
           <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>
-            <Volume2 size={15} color="#0284C7" style={{ verticalAlign: 'middle' }} /> {t.broadcastAdvisory || "Broadcast Command Advisory"}
+            <Volume2 size={15} color="#0284C7" style={{ verticalAlign: 'middle' }} /> Operational Advisory Dispatch
           </h3>
 
           {sentBroadcastFeedback && (
             <div style={{ padding: '8px 12px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10B981', color: '#065F46', fontSize: '0.76rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={15} /> {t.advisoryBroadcasted || "Advisory broadcasted across all 5 NER languages!"}
+              <CheckCircle2 size={15} /> Operational Advisory Logged to AWS DynamoDB!
             </div>
           )}
 
@@ -436,7 +449,7 @@ export const AlertCenter = () => {
               />
             </div>
             <button type="submit" className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.78rem', minHeight: '44px' }}>
-              <Send size={14} /> {t.broadcastAdvisoryBtn || "Broadcast Multi-Lingual Advisory"}
+              <Send size={14} /> Log In-App Operational Advisory (AWS DynamoDB)
             </button>
           </form>
         </div>

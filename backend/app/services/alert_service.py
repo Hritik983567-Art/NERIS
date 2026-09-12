@@ -5,7 +5,10 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
-from app.models.alert import NERISAlert, AlertStatus, AlertSeverity, IncidentEvaluationRequest
+from app.models.alert import (
+    NERISAlert, AlertStatus, AlertSeverity, IncidentEvaluationRequest, CreateAlertRequest, UpdateAlertStatusRequest
+)
+from app.adapters.aws_dynamodb import get_dynamodb_adapter
 
 logger = logging.getLogger("neris.alert_service")
 
@@ -14,39 +17,57 @@ ALERTS_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "alerts_d
 SEED_ALERTS: List[Dict[str, Any]] = [
     {
         "id": "ALT-2026-101",
+        "alertId": "ALT-2026-101",
         "incident_id": "INC-DIMA-804",
+        "incidentId": "INC-DIMA-804",
+        "type": "HAZARD_WARNING",
         "severity": "CRITICAL",
         "title": "RED ALERT: Heavy Rainfall & Landslide in Dima Hasao & West Siang",
         "message": "Continuous cloudburst triggered 80% highway blockage on NH-27. Military emergency escort & heavy BRO dozers dispatched.",
+        "description": "Continuous cloudburst triggered 80% highway blockage on NH-27. Military emergency escort & heavy BRO dozers dispatched.",
         "created_at": "2026-09-11T18:00:00Z",
+        "createdAt": "2026-09-11T18:00:00Z",
         "status": "ACTIVE",
-        "delivery_mode": "Internal NERIS Alert",
+        "recipientScope": "ALL_COMMANDERS",
+        "delivery_mode": "In-App Operational Alert (AWS DynamoDB)",
         "district": "ASSAM",
         "source": "IMD Guwahati Regional Met Center"
     },
     {
         "id": "ALT-2026-102",
+        "alertId": "ALT-2026-102",
         "incident_id": "INC-MAO-902",
+        "incidentId": "INC-MAO-902",
+        "type": "HAZARD_WARNING",
         "severity": "HIGH",
         "title": "NH-2 Mao Gate Landslide - BRO Machinery Clearance Underway",
         "message": "Senapati district slope failure causing single-lane traffic regulation. Convoys moving under alternating 30-min intervals.",
+        "description": "Senapati district slope failure causing single-lane traffic regulation. Convoys moving under alternating 30-min intervals.",
         "created_at": "2026-09-11T18:25:00Z",
+        "createdAt": "2026-09-11T18:25:00Z",
         "status": "ACTIVE",
-        "delivery_mode": "Internal NERIS Alert",
+        "recipientScope": "FIELD_UNITS",
+        "delivery_mode": "In-App Operational Alert (AWS DynamoDB)",
         "district": "MANIPUR",
         "source": "Border Roads Organisation (BRO Project Vartak)"
     },
     {
         "id": "ALT-2026-103",
+        "alertId": "ALT-2026-103",
         "incident_id": "INC-TEESTA-310",
+        "incidentId": "INC-TEESTA-310",
+        "type": "DISASTER_EVACUATION",
         "severity": "HIGH",
         "title": "Teesta River Flood Warning: NH-10 Rangpo Stretch Waterlogged",
         "message": "North Sikkim cloudburst water rise affecting heavy freight movements. BRO Project Swastik excavators deployed.",
+        "description": "North Sikkim cloudburst water rise affecting heavy freight movements. BRO Project Swastik excavators deployed.",
         "created_at": "2026-09-11T19:00:00Z",
+        "createdAt": "2026-09-11T19:00:00Z",
         "status": "ACKNOWLEDGED",
         "acknowledged_by": "NER-CMD-8041",
         "acknowledged_at": "2026-09-11T19:15:00Z",
-        "delivery_mode": "Internal NERIS Alert",
+        "recipientScope": "DISPATCHERS",
+        "delivery_mode": "In-App Operational Alert (AWS DynamoDB)",
         "district": "SIKKIM",
         "source": "Sikkim SDMA Alert Operations"
     }
@@ -56,8 +77,10 @@ class AlertService:
     """
     Persistent Alert Service for Command Center alerts.
     Implements Incident -> Risk Evaluation -> Alert Generation -> Command Center Notification workflow.
+    Persists alert records to AWS DynamoDB ('ner_alerts' table) and local cache.
     """
     def __init__(self):
+        self.dynamodb = get_dynamodb_adapter()
         self._ensure_db_exists()
 
     def _ensure_db_exists(self):
@@ -70,11 +93,12 @@ class AlertService:
 
     def _read_db(self) -> List[Dict[str, Any]]:
         try:
-            with open(ALERTS_DB_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
+            if os.path.exists(ALERTS_DB_PATH):
+                with open(ALERTS_DB_PATH, "r", encoding="utf-8") as f:
+                    return json.load(f)
         except Exception as err:
-            logger.warning(f"Error reading alerts_db.json: {err}. Returning seed alerts.")
-            return SEED_ALERTS
+            logger.warning(f"Error reading alerts_db.json: {err}.")
+        return SEED_ALERTS
 
     def _write_db(self, alerts: List[Dict[str, Any]]):
         try:
@@ -91,22 +115,66 @@ class AlertService:
         raw_alerts = self._read_db()
         result = []
         for item in raw_alerts:
-            if status_filter and status_filter.upper() != "ALL" and item.get("status", "").upper() != status_filter.upper():
+            s_val = str(item.get("status", "")).upper()
+            sev_val = str(item.get("severity", "")).upper()
+
+            if status_filter and status_filter.upper() != "ALL" and s_val != status_filter.upper():
                 continue
-            if severity_filter and severity_filter.upper() != "ALL" and item.get("severity", "").upper() != severity_filter.upper():
+            if severity_filter and severity_filter.upper() != "ALL" and sev_val != severity_filter.upper():
                 continue
             result.append(NERISAlert(**item))
             
         # Sort by creation date newest first
-        result.sort(key=lambda x: x.created_at, reverse=True)
+        result.sort(key=lambda x: x.createdAt, reverse=True)
         return result
 
     def get_alert_by_id(self, alert_id: str) -> Optional[NERISAlert]:
         raw_alerts = self._read_db()
         for item in raw_alerts:
-            if item.get("id") == alert_id:
+            if item.get("id") == alert_id or item.get("alertId") == alert_id:
                 return NERISAlert(**item)
         return None
+
+    def create_alert(self, req: CreateAlertRequest) -> NERISAlert:
+        """
+        Creates a new in-app alert record and persists to AWS DynamoDB ('ner_alerts').
+        """
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        aid = f"ALT-{int(time.time())}"
+        
+        msg = req.message or req.description or f"Operational Alert: {req.title}"
+
+        alert_dict = {
+            "id": aid,
+            "alertId": aid,
+            "type": req.type or "HAZARD_WARNING",
+            "severity": (req.severity or "CRITICAL").upper(),
+            "title": req.title,
+            "message": msg,
+            "description": msg,
+            "incidentId": req.incidentId or req.incident_id,
+            "incident_id": req.incidentId or req.incident_id,
+            "vehicleId": req.vehicleId or req.vehicle_id,
+            "vehicle_id": req.vehicleId or req.vehicle_id,
+            "recipientScope": req.recipientScope or "ALL_COMMANDERS",
+            "createdAt": now_iso,
+            "created_at": now_iso,
+            "status": AlertStatus.ACTIVE.value,
+            "delivery_mode": "In-App Operational Alert (AWS DynamoDB)",
+            "district": (req.district or "ASSAM").upper(),
+            "source": "NERIS Command Center Dispatch"
+        }
+
+        # Save to DynamoDB
+        self.dynamodb.save_alert_to_dynamodb(alert_dict)
+
+        # Save to local file cache
+        alerts = self._read_db()
+        alerts.insert(0, alert_dict)
+        self._write_db(alerts)
+
+        logger.info(f"Created operational alert '{aid}' for recipient scope '{alert_dict['recipientScope']}'.")
+        return NERISAlert(**alert_dict)
 
     def evaluate_incident_and_create_alert(self, req: IncidentEvaluationRequest) -> Optional[NERISAlert]:
         """
@@ -142,13 +210,19 @@ class AlertService:
 
         new_alert = {
             "id": alert_id,
+            "alertId": alert_id,
             "incident_id": inc_id,
+            "incidentId": inc_id,
+            "type": "HAZARD_WARNING",
             "severity": sev,
             "title": headline,
             "message": risk_message,
+            "description": risk_message,
             "created_at": now_iso,
+            "createdAt": now_iso,
             "status": AlertStatus.ACTIVE.value,
-            "delivery_mode": "Internal NERIS Alert",
+            "recipientScope": "ALL_COMMANDERS",
+            "delivery_mode": "In-App Operational Alert (AWS DynamoDB)",
             "district": req.district.upper(),
             "source": f"NERIS Incident Risk Engine ({req.reporter or 'Field Inspector'})"
         }
@@ -159,60 +233,64 @@ class AlertService:
         if existing:
             return NERISAlert(**existing[0])
 
+        # Save to DynamoDB
+        self.dynamodb.save_alert_to_dynamodb(new_alert)
+
+        # Save to file cache
         alerts.insert(0, new_alert)
         self._write_db(alerts)
         
         logger.info(f"Generated Command Center Alert {alert_id} for Incident {inc_id} ({sev}).")
         return NERISAlert(**new_alert)
 
-    def acknowledge_alert(self, alert_id: str, commander_id: str) -> Optional[NERISAlert]:
+    def update_alert_status(
+        self,
+        alert_id: str,
+        new_status: str,
+        commander_id: Optional[str] = None,
+        notes: Optional[str] = None
+    ) -> Optional[NERISAlert]:
         """
-        Updates alert status from ACTIVE -> ACKNOWLEDGED by an authorized Commander.
+        Updates alert status (ACTIVE -> ACKNOWLEDGED / RESOLVED / EXPIRED).
         """
         alerts = self._read_db()
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         updated_item = None
 
+        new_status_clean = str(new_status).upper()
+        if new_status_clean not in {"ACTIVE", "ACKNOWLEDGED", "RESOLVED", "EXPIRED"}:
+            new_status_clean = "ACKNOWLEDGED"
+
         for item in alerts:
-            if item.get("id") == alert_id:
-                item["status"] = AlertStatus.ACKNOWLEDGED.value
-                item["acknowledged_by"] = commander_id
-                item["acknowledged_at"] = now_iso
+            if item.get("id") == alert_id or item.get("alertId") == alert_id:
+                item["status"] = new_status_clean
+                if new_status_clean == "ACKNOWLEDGED":
+                    item["acknowledged_by"] = commander_id or "Cmdr. R. Gogoi"
+                    item["acknowledged_at"] = now_iso
+                elif new_status_clean == "RESOLVED":
+                    item["resolved_by"] = commander_id or "Cmdr. R. Gogoi"
+                    item["resolved_at"] = now_iso
+                    if notes:
+                        item["message"] = f"{item['message']} [Resolution Notes: {notes}]"
                 updated_item = item
                 break
 
         if updated_item:
+            # Persist update to DynamoDB
+            self.dynamodb.save_alert_to_dynamodb(updated_item)
+
+            # Persist update to file cache
             self._write_db(alerts)
-            logger.info(f"Alert {alert_id} ACKNOWLEDGED by Commander {commander_id}.")
+            logger.info(f"Alert '{alert_id}' status updated to '{new_status_clean}' by '{commander_id or 'Commander'}'.")
             return NERISAlert(**updated_item)
             
         return None
 
+    def acknowledge_alert(self, alert_id: str, commander_id: str) -> Optional[NERISAlert]:
+        return self.update_alert_status(alert_id, "ACKNOWLEDGED", commander_id=commander_id)
+
     def resolve_alert(self, alert_id: str, commander_id: str, notes: Optional[str] = None) -> Optional[NERISAlert]:
-        """
-        Updates alert status to RESOLVED by an authorized Commander.
-        """
-        alerts = self._read_db()
-        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        updated_item = None
-
-        for item in alerts:
-            if item.get("id") == alert_id:
-                item["status"] = AlertStatus.RESOLVED.value
-                item["resolved_by"] = commander_id
-                item["resolved_at"] = now_iso
-                if notes:
-                    item["message"] = f"{item['message']} [Resolution Notes: {notes}]"
-                updated_item = item
-                break
-
-        if updated_item:
-            self._write_db(alerts)
-            logger.info(f"Alert {alert_id} RESOLVED by Commander {commander_id}.")
-            return NERISAlert(**updated_item)
-
-        return None
-
+        return self.update_alert_status(alert_id, "RESOLVED", commander_id=commander_id, notes=notes)
 
 _alert_service_instance: Optional[AlertService] = None
 

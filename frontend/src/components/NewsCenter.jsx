@@ -400,10 +400,11 @@ export const NewsCenter = () => {
                 <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)', fontWeight: 700 }}>
                   📍 {getLocalizedLocation(featuredArticle.location, lang)}
                 </span>
-                <span className="pill clear" style={{ fontSize: '0.64rem' }}>
-                  Score: {featuredArticle.relevance_score}
-                </span>
-                <span className="pill clear" style={{ fontSize: '0.64rem' }}>LIVE FEED</span>
+                {featuredArticle.is_demo ? (
+                  <span className="pill warning" style={{ fontSize: '0.64rem', padding: '2px 8px' }}>DEMO DATA</span>
+                ) : (
+                  <span className="pill clear" style={{ fontSize: '0.64rem' }}>LIVE FEED</span>
+                )}
               </div>
 
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.3, marginBottom: '8px' }}>
@@ -542,11 +543,11 @@ export const NewsCenter = () => {
                       {getLocalizedCategory(article.category, lang)} • {getLocalizedSeverity(article.severity, lang)}
                     </span>
 
-                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-muted)', background: 'rgba(37, 99, 235, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
-                      📍 {getLocalizedLocation(article.location, lang)}
-                    </span>
-
-                    <span className="pill clear" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>LIVE FEED</span>
+                    {article.is_demo ? (
+                      <span className="pill warning" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>DEMO DATA</span>
+                    ) : (
+                      <span className="pill clear" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>LIVE FEED</span>
+                    )}
                   </div>
 
                   {/* Article Image Container */}

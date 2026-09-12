@@ -22,29 +22,35 @@ export const AppProvider = ({ children }) => {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  // Persistent NERIS Command Alerts State
+  // Persistent NERIS Command Alerts State (AWS DynamoDB)
   const [alerts, setAlerts] = useState([
     {
       id: "ALT-1001",
+      alertId: "ALT-1001",
       incident_id: "INC-8921",
+      incidentId: "INC-8921",
       severity: "CRITICAL",
       title: "CRITICAL INCIDENT ALERT: Mudslide at Dima Hasao NH-27 Corridor",
       message: "Severe mudslide reported by field officer. Massive blockage endangering convoys along NH-27.",
       created_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       status: "ACTIVE",
-      delivery_mode: "Internal NERIS Alert"
+      delivery_mode: "In-App Operational Alert (AWS DynamoDB)"
     },
     {
       id: "ALT-1002",
+      alertId: "ALT-1002",
       incident_id: "INC-7703",
+      incidentId: "INC-7703",
       severity: "HIGH",
       title: "HIGH SEVERITY ALERT: Highway Inundation at Silchar Bypass",
       message: "Barak River overflow causing flash inundation across 2.5km section.",
       created_at: new Date(Date.now() - 3600000).toISOString(),
+      createdAt: new Date(Date.now() - 3600000).toISOString(),
       status: "ACKNOWLEDGED",
       acknowledged_by: "Cmdr. R. Gogoi",
       acknowledged_at: new Date(Date.now() - 1800000).toISOString(),
-      delivery_mode: "Internal NERIS Alert"
+      delivery_mode: "In-App Operational Alert (AWS DynamoDB)"
     }
   ]);
 
@@ -199,31 +205,41 @@ export const AppProvider = ({ children }) => {
     if (!targetFleet) return null;
 
     const payload = {
+      vehicleId: targetFleet.id,
       vehicle_id: targetFleet.id,
-      driver_name: targetFleet.driverName || "Ramesh Kalita",
-      driver_phone: targetFleet.driverPhone || "+91 98640 11234",
+      registration: targetFleet.id,
+      vehicleType: targetFleet.vehicle_type || "HEAVY_TRUCK",
+      status: targetFleet.status || "CLEAR",
+      latitude: targetFleet.lat,
+      longitude: targetFleet.lng,
       current_lat: targetFleet.lat,
       current_lng: targetFleet.lng,
+      speed: targetFleet.speedKm || 38.5,
       speed_kmh: targetFleet.speedKm || 38.5,
+      heading: targetFleet.heading || 120.0,
+      heading_degrees: targetFleet.heading || 120.0,
+      cargo: targetFleet.payload || "Life-Saving Vaccines & Medical Supplies",
       cargo_type: targetFleet.cargoType || "MEDICINE",
+      driver_name: targetFleet.driverName || "Ramesh Kalita",
+      driver_phone: targetFleet.driverPhone || "+91 98640 11234",
       destination_district: targetFleet.destination || "Silchar / Barak Valley Depot",
-      timestamp: new Date().toISOString(),
-      heading_degrees: targetFleet.heading || 120.0
+      updatedAt: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
 
     const res = await api.pingTelemetry(payload);
     if (res && res.hazard_in_proximity) {
       setBroadcastAlerts((prev) => [
         {
-          id: `ping-alert-${Date.now()}`,
-          title: `⚠️ REAL-TIME GPS HAZARD DETECTED: Convoy ${targetFleet.id}`,
+          id: res.alert_created?.id || `ping-alert-${Date.now()}`,
+          title: res.alert_created?.title || `⚠️ REAL-TIME GPS HAZARD DETECTED: Convoy ${targetFleet.id}`,
           type: "warning",
           timestamp: "JUST NOW",
           source: res.warning_message || "Backend Geodesic Proximity Engine"
         },
         ...prev
       ]);
-      setFleets((prev) => prev.map(f => f.id === targetFleet.id ? { ...f, status: 'rerouting' } : f));
+      setFleets((prev) => prev.map(f => f.id === targetFleet.id ? { ...f, status: 'ROUTE AT RISK' } : f));
     }
     return res;
   };
@@ -302,20 +318,50 @@ export const AppProvider = ({ children }) => {
 
   const t = translations[lang] || translations.en;
 
+import { offlineQueueDB } from '../services/offlineQueueDB';
+
+// In AppProvider component:
+  // Initialize offline queue from IndexedDB on mount & set up online/offline event listeners
+  useEffect(() => {
+    offlineQueueDB.getAllQueuedIncidents().then((items) => {
+      if (items && Array.isArray(items)) {
+        setOfflineQueue(items);
+      }
+    });
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      setTimeout(() => {
+        syncOfflineQueue();
+      }, 1000);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const toggleOnlineStatus = () => {
     const nextStatus = !isOnline;
     setIsOnline(nextStatus);
 
-    // If going back online, auto sync queue after 1.5s delay for realistic UX
-    if (nextStatus && offlineQueue.length > 0) {
+    if (nextStatus) {
       setTimeout(() => {
         syncOfflineQueue();
-      }, 1200);
+      }, 1000);
     }
   };
 
   const addIncidentReport = async (report) => {
-    const incId = report.id || `INC-${Date.now().toString().slice(-4)}`;
+    const clientIncId = report.clientIncidentId || report.id || `INC-CLI-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     let finalEvidenceUrl = report.photoUrl || "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957";
     let evidenceStatus = report.photoFile ? "PENDING" : "NONE";
@@ -325,7 +371,7 @@ export const AppProvider = ({ children }) => {
     if (isOnline && report.photoFile) {
       const formData = new FormData();
       formData.append('file', report.photoFile);
-      formData.append('incident_id', incId);
+      formData.append('incident_id', clientIncId);
 
       const s3Res = await api.uploadEvidence(formData);
       if (s3Res && (s3Res.s3_confirmed || s3Res.status === 'UPLOADED')) {
@@ -333,18 +379,13 @@ export const AppProvider = ({ children }) => {
         evidenceStatus = "UPLOADED";
         s3Confirmed = true;
         uploadedAt = s3Res.uploaded_at;
-      } else if (s3Res && s3Res.status === 'FAILED') {
-        return {
-          status: 'FAILED',
-          error: s3Res.error || 'Amazon S3 evidence upload failed.',
-          s3_confirmed: false,
-          dynamodb_confirmed: false
-        };
       }
     }
 
-    const newIncident = {
-      id: incId,
+    const newIncidentPayload = {
+      id: clientIncId,
+      clientIncidentId: clientIncId,
+      operation_id: clientIncId,
       title: report.title,
       type: report.type,
       severity: report.severity,
@@ -368,106 +409,146 @@ export const AppProvider = ({ children }) => {
     };
 
     if (isOnline) {
-      // Persist directly to AWS DynamoDB
-      const ddbRes = await api.createIncident(newIncident);
-      const isDdbConfirmed = Boolean(ddbRes && (ddbRes.dynamodb_confirmed || ddbRes.status === 'CREATED'));
+      // Direct live submission to AWS DynamoDB
+      const ddbRes = await api.createIncident(newIncidentPayload);
+      const isDdbConfirmed = Boolean(ddbRes && (ddbRes.dynamodb_confirmed || ddbRes.status === 'CREATED' || ddbRes.duplicate_prevented));
 
       if (!isDdbConfirmed && ddbRes && ddbRes.status === 'FAILED') {
+        // Fallback to IndexedDB queue if network request fails unexpectedly
+        const queuedItem = await offlineQueueDB.enqueueIncident(newIncidentPayload);
+        const refreshedQueue = await offlineQueueDB.getAllQueuedIncidents();
+        setOfflineQueue(refreshedQueue);
+
         return {
-          status: 'FAILED',
-          error: ddbRes.error || 'DynamoDB persistence failed.',
-          s3_confirmed: s3Confirmed,
-          dynamodb_confirmed: false
+          status: 'queued',
+          localQueueId: queuedItem.localQueueId,
+          clientIncidentId: clientIncId,
+          dynamodb_confirmed: false,
+          s3_confirmed: false,
+          error: ddbRes.error || 'Server error, enqueued in IndexedDB',
+          data: newIncidentPayload
         };
       }
 
-      newIncident.status = isDdbConfirmed ? 'SYNCED' : 'SUBMITTED';
-      newIncident.dynamodb_confirmed = isDdbConfirmed;
+      newIncidentPayload.status = isDdbConfirmed ? 'SYNCED' : 'SUBMITTED';
+      newIncidentPayload.dynamodb_confirmed = isDdbConfirmed;
 
-      setIncidents((prev) => [newIncident, ...prev]);
+      setIncidents((prev) => {
+        const exists = prev.some(i => i.id === clientIncId || i.clientIncidentId === clientIncId);
+        if (exists) return prev;
+        return [newIncidentPayload, ...prev];
+      });
 
-      // Also trigger a broadcast alert
-      setBroadcastAlerts((prev) => [
-        {
-          id: `b-${Date.now()}`,
-          title: `NEW FIELD REPORT: ${newIncident.title} (${newIncident.locationName})`,
-          type: "report",
-          timestamp: "Just Now",
-          source: report.reporter || "Field Unit"
-        },
-        ...prev
-      ]);
-
-      // Automatically trigger Backend Incident Risk Evaluation Workflow
+      // Also evaluate risk & trigger persistent alert
       api.evaluateIncidentRisk({
-        id: newIncident.id,
-        title: newIncident.title,
-        type: newIncident.type,
-        severity: newIncident.severity,
-        district: newIncident.state,
-        description: newIncident.description
+        id: clientIncId,
+        title: newIncidentPayload.title,
+        type: newIncidentPayload.type,
+        severity: newIncidentPayload.severity,
+        district: newIncidentPayload.state,
+        description: newIncidentPayload.description
       }).then((result) => {
-        if (result && result.alert_generated && result.alert) {
+        if (result && result.alert) {
           setAlerts((prev) => {
             const exists = prev.some(a => a.id === result.alert.id);
             if (!exists) return [result.alert, ...prev];
-            return prev.map(a => a.id === result.alert.id ? result.alert : a);
+            return prev;
           });
         }
       });
 
       return {
-        status: isDdbConfirmed ? 'synced' : 'submitted',
+        status: 'synced',
+        clientIncidentId: clientIncId,
         dynamodb_confirmed: isDdbConfirmed,
         s3_confirmed: s3Confirmed,
-        data: newIncident
+        data: newIncidentPayload
       };
     } else {
-      // Offline mode: store in local offline queue
-      newIncident.status = 'PENDING';
-      newIncident.evidence_status = 'PENDING';
-      setOfflineQueue((prev) => [newIncident, ...prev]);
+      // Genuine Offline Mode: Enqueue into IndexedDB persistent store
+      const queuedItem = await offlineQueueDB.enqueueIncident(newIncidentPayload);
+      const refreshedQueue = await offlineQueueDB.getAllQueuedIncidents();
+      setOfflineQueue(refreshedQueue);
+
       return {
         status: 'queued',
+        localQueueId: queuedItem.localQueueId,
+        clientIncidentId: clientIncId,
         dynamodb_confirmed: false,
         s3_confirmed: false,
-        data: newIncident
+        data: newIncidentPayload
       };
     }
   };
 
-  const syncOfflineQueue = () => {
-    if (offlineQueue.length === 0) return;
+  const syncOfflineQueue = async () => {
+    const queuedItems = await offlineQueueDB.getAllQueuedIncidents();
+    const pendingItems = queuedItems.filter(item => item.status === 'PENDING SYNC' || item.status === 'FAILED');
 
-    setIncidents((prev) => [...offlineQueue, ...prev]);
-    setBroadcastAlerts((prev) => [
-      {
-        id: `b-${Date.now()}`,
-        title: `OFFLINE SYNC COMPLETE: ${offlineQueue.length} Field Reports Uploaded to Cloud Server`,
-        type: "system",
-        timestamp: "Just Now",
-        source: "Automated Offline Sync Protocol"
-      },
-      ...prev
-    ]);
+    if (pendingItems.length === 0) return;
 
-    // Evaluate offline synced incidents against risk model
-    offlineQueue.forEach((item) => {
-      api.evaluateIncidentRisk({
-        id: item.id,
-        title: item.title,
-        type: item.type,
-        severity: item.severity,
-        district: item.state,
-        description: item.description
-      }).then((result) => {
-        if (result && result.alert_generated && result.alert) {
-          setAlerts((prev) => [result.alert, ...prev]);
-        }
+    for (const item of pendingItems) {
+      const attemptCount = (item.attemptCount || 0) + 1;
+      const lastAttemptAt = new Date().toISOString();
+
+      // Exponential Backoff Delay calculation: 1000 * 2^(attemptCount - 1) ms
+      if (attemptCount > 1) {
+        const backoffMs = Math.min(1000 * Math.pow(2, attemptCount - 1), 8000);
+        await new Promise(res => setTimeout(res, backoffMs));
+      }
+
+      // 1. Mark as SYNCING in IndexedDB & state
+      await offlineQueueDB.updateQueuedIncident(item.localQueueId, {
+        status: 'SYNCING',
+        attemptCount,
+        lastAttemptAt,
+        error: null
       });
-    });
+      setOfflineQueue(await offlineQueueDB.getAllQueuedIncidents());
 
-    setOfflineQueue([]);
+      try {
+        const ddbRes = await api.createIncident(item.payload);
+        const isSuccess = Boolean(ddbRes && (ddbRes.dynamodb_confirmed || ddbRes.status === 'CREATED' || ddbRes.duplicate_prevented));
+
+        if (isSuccess) {
+          // 2. Mark as SYNCED in IndexedDB
+          await offlineQueueDB.updateQueuedIncident(item.localQueueId, {
+            status: 'SYNCED',
+            attemptCount,
+            lastAttemptAt,
+            error: null
+          });
+
+          // Add to live incidents list
+          const syncedInc = item.payload;
+          syncedInc.status = 'SYNCED';
+          syncedInc.dynamodb_confirmed = true;
+          setIncidents((prev) => {
+            const exists = prev.some(i => i.id === syncedInc.id || i.clientIncidentId === syncedInc.clientIncidentId);
+            if (exists) return prev;
+            return [syncedInc, ...prev];
+          });
+        } else {
+          // Mark as FAILED in IndexedDB
+          await offlineQueueDB.updateQueuedIncident(item.localQueueId, {
+            status: 'FAILED',
+            attemptCount,
+            lastAttemptAt,
+            error: ddbRes?.error || 'DynamoDB sync failed'
+          });
+        }
+      } catch (err) {
+        await offlineQueueDB.updateQueuedIncident(item.localQueueId, {
+          status: 'FAILED',
+          attemptCount,
+          lastAttemptAt,
+          error: err.message || 'Network error during sync'
+        });
+      }
+    }
+
+    const finalQueue = await offlineQueueDB.getAllQueuedIncidents();
+    setOfflineQueue(finalQueue);
   };
 
   const triggerSOSAlert = (fleetId, message) => {

@@ -514,6 +514,22 @@ export const GISMap = () => {
                 gridColumn: '1 / -1',
                 width: '100%'
               }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h5 style={{ margin: 0, color: '#A78BFA', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={14} /> AI-generated assessment
+                    {aiIntelligence.model_used && (
+                      <span style={{ fontSize: '0.68rem', padding: '2px 6px', background: 'rgba(167, 139, 250, 0.2)', borderRadius: '4px', color: '#C4B5FD' }}>
+                        {aiIntelligence.model_used}
+                      </span>
+                    )}
+                  </h5>
+                  {aiIntelligence.latency_ms !== undefined && (
+                    <span style={{ fontSize: '0.68rem', color: 'var(--color-muted)' }}>
+                      Latency: {aiIntelligence.latency_ms}ms
+                    </span>
+                  )}
+                </div>
+
                 <div style={{
                   padding: '8px 12px',
                   borderRadius: '6px',
@@ -531,7 +547,7 @@ export const GISMap = () => {
                   <span>{aiIntelligence.disclaimer || "⚠️ AI-Assisted Incident Intelligence — Requires Human Field Officer Verification."}</span>
                 </div>
 
-                {aiIntelligence.available === false ? (
+                {aiIntelligence.available === false || aiIntelligence.ai_analysis_status === "FAILED" || aiIntelligence.ai_analysis_status === "UNCONFIGURED" ? (
                   <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #EF4444', borderRadius: '6px', color: '#FCA5A5', fontSize: '0.76rem' }}>
                     ⚠️ {aiIntelligence.error_message || "Amazon Bedrock AI service is unconfigured or unavailable in this environment."}
                   </div>
@@ -539,30 +555,30 @@ export const GISMap = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', fontSize: '0.76rem', color: 'var(--color-text)' }}>
                     <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
                       <strong style={{ color: '#A78BFA', fontSize: '0.78rem' }}>Summary:</strong>
-                      <p style={{ margin: '4px 0 0 0', color: 'var(--color-text)', lineHeight: 1.4 }}>{aiIntelligence.summary}</p>
+                      <p style={{ margin: '4px 0 0 0', color: 'var(--color-text)', lineHeight: 1.4 }}>{aiIntelligence.summary || aiIntelligence.reasoning}</p>
                     </div>
 
                     <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
-                      <strong style={{ color: '#F87171', fontSize: '0.78rem' }}>Potential Operational Impact:</strong>
-                      <p style={{ margin: '4px 0 0 0', color: 'var(--color-text)', lineHeight: 1.4 }}>{aiIntelligence.potential_operational_impact}</p>
+                      <strong style={{ color: '#F87171', fontSize: '0.78rem' }}>Potential Operational Impact / Transport:</strong>
+                      <p style={{ margin: '4px 0 0 0', color: 'var(--color-text)', lineHeight: 1.4 }}>{aiIntelligence.potential_operational_impact || aiIntelligence.transportImpact || aiIntelligence.severityAssessment}</p>
                     </div>
 
-                    {aiIntelligence.verification_questions?.length > 0 && (
+                    {(aiIntelligence.verification_questions?.length > 0 || aiIntelligence.riskFactors?.length > 0) && (
                       <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
-                        <strong style={{ color: '#FBBF24', fontSize: '0.78rem' }}>Questions to Verify on Ground:</strong>
+                        <strong style={{ color: '#FBBF24', fontSize: '0.78rem' }}>Risk Factors & Ground Verification:</strong>
                         <ul style={{ margin: '4px 0 0 16px', padding: 0, color: 'var(--color-text)', lineHeight: 1.35 }}>
-                          {aiIntelligence.verification_questions.map((q, idx) => (
+                          {(aiIntelligence.verification_questions || aiIntelligence.riskFactors || []).map((q, idx) => (
                             <li key={idx}>{q}</li>
                           ))}
                         </ul>
                       </div>
                     )}
 
-                    {aiIntelligence.suggested_response_actions?.length > 0 && (
+                    {(aiIntelligence.suggested_response_actions?.length > 0 || aiIntelligence.recommendedActions?.length > 0) && (
                       <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
                         <strong style={{ color: '#34D399', fontSize: '0.78rem' }}>Suggested Response Actions:</strong>
                         <ul style={{ margin: '4px 0 0 16px', padding: 0, color: 'var(--color-text)', lineHeight: 1.35 }}>
-                          {aiIntelligence.suggested_response_actions.map((act, idx) => (
+                          {(aiIntelligence.suggested_response_actions || aiIntelligence.recommendedActions || []).map((act, idx) => (
                             <li key={idx}>{act}</li>
                           ))}
                         </ul>

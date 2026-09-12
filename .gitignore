@@ -27,11 +27,14 @@ venv/
 .env
 *.env
 
-# Scratch files
+# Scratch & temporary uploads
 scratch/
+backend/app/data/uploads/*
+!backend/app/data/uploads/.gitkeep
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
 

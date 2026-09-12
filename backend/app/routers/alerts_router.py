@@ -1,23 +1,84 @@
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Query, HTTPException, status, Depends
-from app.models.alert import NERISAlert, IncidentEvaluationRequest, AlertActionRequest
+from fastapi import APIRouter, Query, HTTPException, status, Depends, Request
+from app.models.alert import NERISAlert, IncidentEvaluationRequest, AlertActionRequest, CreateAlertRequest, UpdateAlertStatusRequest
 from app.services.alert_service import get_alert_service
 from app.core.dependencies import require_roles
 
-router = APIRouter(prefix="/api/v1/alerts", tags=["Command Center Alert Hub API"])
+router = APIRouter(tags=["Command Center Alert Hub API"])
 
-@router.get("", response_model=List[NERISAlert], status_code=status.HTTP_200_OK)
+@router.get("/alerts", response_model=List[NERISAlert], status_code=status.HTTP_200_OK)
+@router.get("/api/alerts", response_model=List[NERISAlert], status_code=status.HTTP_200_OK)
+@router.get("/api/v1/alerts", response_model=List[NERISAlert], status_code=status.HTTP_200_OK)
 async def get_command_center_alerts(
     status_filter: Optional[str] = Query(None, alias="status", description="Filter alerts by status: ACTIVE, ACKNOWLEDGED, RESOLVED"),
     severity: Optional[str] = Query(None, description="Filter alerts by severity: CRITICAL, HIGH, MODERATE, LOW")
 ):
     """
-    Retrieves all persisted Command Center alerts.
+    Retrieves all persistent Command Center alerts from AWS DynamoDB ('ner_alerts').
     """
     service = get_alert_service()
     return service.get_all_alerts(status_filter=status_filter, severity_filter=severity)
 
-@router.post("/evaluate-incident", status_code=status.HTTP_200_OK)
+@router.post("/alerts", response_model=NERISAlert, status_code=status.HTTP_201_CREATED)
+@router.post("/api/alerts", response_model=NERISAlert, status_code=status.HTTP_201_CREATED)
+@router.post("/api/v1/alerts", response_model=NERISAlert, status_code=status.HTTP_201_CREATED)
+async def create_command_center_alert(
+    payload: Dict[str, Any],
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
+):
+    """
+    Creates and persists a new Command Center operational alert into AWS DynamoDB.
+    """
+    if not payload.get("title"):
+        raise HTTPException(status_code=400, detail="Validation Error: Alert 'title' is required.")
+
+    req = CreateAlertRequest(
+        type=payload.get("type", "HAZARD_WARNING"),
+        severity=payload.get("severity", "CRITICAL"),
+        title=payload.get("title"),
+        message=payload.get("message") or payload.get("description"),
+        description=payload.get("description") or payload.get("message"),
+        incidentId=payload.get("incidentId") or payload.get("incident_id"),
+        incident_id=payload.get("incident_id") or payload.get("incidentId"),
+        vehicleId=payload.get("vehicleId") or payload.get("vehicle_id"),
+        vehicle_id=payload.get("vehicle_id") or payload.get("vehicleId"),
+        recipientScope=payload.get("recipientScope") or payload.get("recipient_scope") or "ALL_COMMANDERS",
+        district=payload.get("district", "ASSAM")
+    )
+    service = get_alert_service()
+    alert = service.create_alert(req)
+    return alert
+
+@router.patch("/alerts/{alert_id}", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/api/alerts/{alert_id}", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/api/v1/alerts/{alert_id}", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/alerts/{alert_id}/status", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/api/alerts/{alert_id}/status", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/api/v1/alerts/{alert_id}/status", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+async def update_alert_status(
+    alert_id: str,
+    payload: Dict[str, Any],
+    user: Dict[str, Any] = Depends(require_roles(["COMMANDER", "ADMIN"]))
+):
+    """
+    Updates the status of an operational alert (ACTIVE -> ACKNOWLEDGED / RESOLVED / EXPIRED) and persists to DynamoDB.
+    """
+    new_status = payload.get("status")
+    if not new_status:
+        raise HTTPException(status_code=400, detail="Validation Error: 'status' is required for alert status update.")
+
+    commander_id = payload.get("commander_id") or payload.get("action_by") or payload.get("commander_name") or user.get("sub", "Commander")
+    notes = payload.get("notes")
+
+    service = get_alert_service()
+    updated_alert = service.update_alert_status(alert_id, new_status, commander_id=commander_id, notes=notes)
+    if not updated_alert:
+        raise HTTPException(status_code=404, detail=f"Alert '{alert_id}' not found.")
+    return updated_alert
+
+@router.post("/alerts/evaluate-incident", status_code=status.HTTP_200_OK)
+@router.post("/api/alerts/evaluate-incident", status_code=status.HTTP_200_OK)
+@router.post("/api/v1/alerts/evaluate-incident", status_code=status.HTTP_200_OK)
 async def evaluate_incident_risk(req: IncidentEvaluationRequest):
     """
     Incident Workflow Step 2 & 3:
@@ -37,7 +98,9 @@ async def evaluate_incident_risk(req: IncidentEvaluationRequest):
         "alert": alert
     }
 
-@router.patch("/{alert_id}/acknowledge", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/alerts/{alert_id}/acknowledge", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/api/alerts/{alert_id}/acknowledge", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/api/v1/alerts/{alert_id}/acknowledge", response_model=NERISAlert, status_code=status.HTTP_200_OK)
 async def acknowledge_alert(
     alert_id: str,
     req: AlertActionRequest,
@@ -53,7 +116,9 @@ async def acknowledge_alert(
         raise HTTPException(status_code=404, detail=f"Alert '{alert_id}' not found.")
     return alert
 
-@router.patch("/{alert_id}/resolve", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/alerts/{alert_id}/resolve", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/api/alerts/{alert_id}/resolve", response_model=NERISAlert, status_code=status.HTTP_200_OK)
+@router.patch("/api/v1/alerts/{alert_id}/resolve", response_model=NERISAlert, status_code=status.HTTP_200_OK)
 async def resolve_alert(
     alert_id: str,
     req: AlertActionRequest,
@@ -68,3 +133,4 @@ async def resolve_alert(
     if not alert:
         raise HTTPException(status_code=404, detail=f"Alert '{alert_id}' not found.")
     return alert
+

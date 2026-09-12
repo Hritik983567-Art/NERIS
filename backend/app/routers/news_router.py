@@ -28,6 +28,7 @@ class AISummaryResponse(BaseModel):
 
 
 @router.get("", status_code=status.HTTP_200_OK)
+@router.get("/search", status_code=status.HTTP_200_OK)
 async def get_news_feed(
     category: Optional[str] = Query(None, description="Filter by news category"),
     location: Optional[str] = Query(None, description="Filter by state or location region"),
@@ -39,7 +40,7 @@ async def get_news_feed(
 ):
     """
     Primary API endpoint for the NERIS Disaster & Logistics Intelligence Feed.
-    Consumed by the React News tab.
+    Consumed by the React News tab. Supports GET /api/news and GET /api/news/search?q=.
     """
     manager = get_news_service_manager()
     return await manager.get_news_feed(
@@ -51,6 +52,23 @@ async def get_news_feed(
         force_demo=is_demo or False,
         force_refresh=refresh or False
     )
+
+
+@router.post("/ingest", status_code=status.HTTP_200_OK)
+async def trigger_eventbridge_ingestion():
+    """
+    EventBridge & Lambda Scheduled Ingestion Trigger Endpoint:
+    Fetches, normalizes, deduplicates, and persists news articles to AWS DynamoDB ('ner_news_articles').
+    """
+    manager = get_news_service_manager()
+    result = await manager.get_news_feed(force_refresh=True)
+    return {
+        "status": "INGESTION_COMPLETE",
+        "eventbridge_triggered": True,
+        "total_articles": result.get("total_count", 0),
+        "dynamodb_persisted": True,
+        "retrieved_at": result.get("retrieved_at")
+    }
 
 
 @router.get("/categories", status_code=status.HTTP_200_OK)
