@@ -1,8 +1,10 @@
-# 🏗️ System Architecture — NERIS Platform
+# 🏗️ System Architecture — NERIS — North-East Regional Emergency Transit System
 
-> **NERIS**: North-East Regional Emergency Transit System  
+> **Project**: NERIS — North-East Regional Emergency Transit System  
 > **Target Region**: `ap-south-1` (Asia Pacific - Mumbai)  
 > **AWS First Commit Track**: Ship It Track  
+> **Disclaimer**: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.
+
 
 ---
 

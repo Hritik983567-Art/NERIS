@@ -1,9 +1,11 @@
 # HACKATHON BASELINE & PRE-HACKATHON PROTOTYPE SPECIFICATION
 
-**Project Name:** NERIS (North-East India Rapid Logistics & Disaster Relief Network)  
+**Project Name:** NERIS — North-East Regional Emergency Transit System  
 **Hackathon:** AWS / WeMakeDevs First Commit Hackathon  
 **Baseline Date:** September 12, 2026  
 **Document Status:** Baseline / Pre-Hackathon Specification  
+*Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
+
 
 ---
 

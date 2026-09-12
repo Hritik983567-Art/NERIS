@@ -1,8 +1,10 @@
 # AWS Serverless Architecture & Infrastructure Specification
 
-**Project:** NERIS (North-East India Rapid Logistics & Disaster Relief Network)  
+**Project:** NERIS — North-East Regional Emergency Transit System  
 **Hackathon Phase:** AWS / WeMakeDevs First Commit — First Implementation Phase  
 **Architecture:** Managed AWS Serverless Cloud Native Stack  
+*Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
+
 
 ---
 

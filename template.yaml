@@ -1,8 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  NERIS (North-East India Rapid Logistics & Disaster Relief Network)
+  NERIS — North-East Regional Emergency Transit System
   AWS Serverless Infrastructure Stack for AWS First Commit Hackathon
+  Note: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.
+
 
 Globals:
   Function:

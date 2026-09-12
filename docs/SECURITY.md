@@ -1,14 +1,16 @@
 # NERIS Security Model & Audit Compliance Report
 
-> **Project**: NERIS (North-East Emergency Transit System)  
+> **Project**: NERIS — North-East Regional Emergency Transit System  
 > **AWS First Commit Track**: Ship It Track  
-> **Audit Status**: VERIFIED & COMPLIANT (20/20 Checklist Items Passed)
+> **Audit Status**: VERIFIED & COMPLIANT (20/20 Checklist Items Passed)  
+> **Disclaimer**: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.
 
 ---
 
 ## Executive Summary
 
-This document details the security model, threat mitigation strategies, authentication mechanisms, authorization controls, data storage encryption policies, file upload security safeguards, secrets management, AI prompt injection protections, and audit compliance for the **NERIS (North-East Emergency Transit System)** application.
+This document details the security model, threat mitigation strategies, authentication mechanisms, authorization controls, data storage encryption policies, file upload security safeguards, secrets management, AI prompt injection protections, and audit compliance for the **NERIS — North-East Regional Emergency Transit System** application.
+
 
 ---
 

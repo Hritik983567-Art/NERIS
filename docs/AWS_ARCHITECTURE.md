@@ -1,8 +1,10 @@
-# AWS System Architecture — NERIS Platform
+# AWS System Architecture — NERIS — North-East Regional Emergency Transit System
 
-**Project Name**: NERIS (North East Disaster Resilience & Intelligent Logistics Network)  
+**Project Name**: NERIS — North-East Regional Emergency Transit System  
 **Target AWS Region**: `ap-south-1` (Asia Pacific - Mumbai)  
-**AWS First Commit Track**: **Ship It Track**
+**AWS First Commit Track**: **Ship It Track**  
+*Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
+
 
 ---
 

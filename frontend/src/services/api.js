@@ -1,4 +1,12 @@
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '');
+const IS_PROD_MODE = import.meta.env.PROD || import.meta.env.MODE === 'production';
+
+if (IS_PROD_MODE) {
+  console.info(`[NERIS PRODUCTION FRONTEND] Operating in PRODUCTION mode using API Base URL: ${API_BASE_URL}`);
+} else {
+  console.info(`[NERIS DEVELOPMENT FRONTEND] Operating in DEVELOPMENT mode using API Base URL: ${API_BASE_URL}`);
+}
+
 
 const getAuthHeaders = (extraHeaders = {}) => {
   const token = localStorage.getItem('cognito_token');

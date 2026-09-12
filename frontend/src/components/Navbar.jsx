@@ -456,6 +456,12 @@ export const Navbar = () => {
               </button>
             </div>
           )}
+
+          {!collapsed && (
+            <div style={{ marginTop: '8px', padding: '0 4px', fontSize: '0.58rem', color: 'var(--color-muted)', lineHeight: 1.2, textAlign: 'center' }}>
+              NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.
+            </div>
+          )}
         </div>
       </aside>
     </>

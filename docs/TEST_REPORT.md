@@ -1,15 +1,17 @@
 # NERIS System Test Execution & Verification Report
 
-> **Project**: NERIS (North-East Emergency Transit System)  
+> **Project**: NERIS — North-East Regional Emergency Transit System  
 > **AWS First Commit Track**: Ship It Track  
 > **Execution Date**: 2026-09-12  
-> **Test Status**: 47/47 PASSED (100% Pass Rate, 0 Failures)
+> **Test Status**: 47/47 PASSED (100% Pass Rate, 0 Failures)  
+> **Disclaimer**: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.
 
 ---
 
 ## Executive Summary
 
-This document presents the verified automated test execution report for the **NERIS (North-East Emergency Transit System)** platform. All test cases were programmatically executed against the live application system and AWS integrations using the automated test suite runner (`scratch/run_full_system_tests.py`).
+This document presents the verified automated test execution report for the **NERIS — North-East Regional Emergency Transit System** platform. All test cases were programmatically executed against the live application system and AWS integrations using the automated test suite runner (`scratch/run_full_system_tests.py`).
+
 
 ---
 

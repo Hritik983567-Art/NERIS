@@ -2,7 +2,7 @@ export const translations = {
   "en": {
     "appTitle": "NERIS",
     "subTitle": "Live Road Safety, Landslide Alerts & Transit System for Tourists, Local Residents & Officers",
-    "emergencyTransitSubTitle": "Emergency Transit",
+    "emergencyTransitSubTitle": "North-East Regional Emergency Transit System",
     "navMap": "GIS Live Map",
     "navRoutePlanner": "AI Route Optimizer",
     "navFleet": "Fleet Telemetry",

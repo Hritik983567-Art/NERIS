@@ -1,8 +1,10 @@
 # IMPLEMENTATION STATUS & AUDIT REPORT — NERIS PLATFORM
 
-**Project**: NERIS (North East Disaster Resilience & Intelligent Logistics Network)  
+**Project**: NERIS — North-East Regional Emergency Transit System  
 **Hackathon**: AWS / WeMakeDevs First Commit Hackathon  
 **Target AWS Region**: `ap-south-1`  
+*Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
+
 
 ---
 

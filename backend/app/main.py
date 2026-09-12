@@ -42,8 +42,8 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down NER-LogiTrack Application Server.")
 
 app = FastAPI(
-    title="NERIS: AWS First Commit Serverless Logistics & Disaster Relief Engine",
-    description="Backend Service — AWS Serverless Stack (API Gateway -> Lambda -> DynamoDB -> S3)",
+    title="NERIS — North-East Regional Emergency Transit System",
+    description="Backend Service — AWS Serverless Stack (API Gateway -> Lambda -> DynamoDB -> S3). Note: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.",
     version="3.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -198,7 +198,8 @@ async def health_check():
     service = get_network_service()
     return {
         "status": "healthy",
-        "service": "NERIS API",
+        "service": "NERIS — North-East Regional Emergency Transit System",
+        "disclaimer": "NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.",
         "environment": settings.ENVIRONMENT,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "aws_architecture": "React -> Amazon API Gateway -> AWS Lambda -> Amazon DynamoDB",

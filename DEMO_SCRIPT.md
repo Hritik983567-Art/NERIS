@@ -1,8 +1,10 @@
-# DEMO_SCRIPT.md — NERIS End-to-End Hackathon Demonstration Guide
+# DEMO_SCRIPT.md — NERIS — North-East Regional Emergency Transit System Demonstration Guide
 
-**Project**: NERIS (North East Disaster Resilience & Intelligent Logistics Network)  
+**Project**: NERIS — North-East Regional Emergency Transit System  
 **Hackathon**: AWS / WeMakeDevs First Commit Hackathon  
 **Target Audience**: Hackathon Judges, AWS Architects & Emergency Response Officers  
+*Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
+
 
 ---
 

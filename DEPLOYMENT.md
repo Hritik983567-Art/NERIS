@@ -1,8 +1,10 @@
-# DEPLOYMENT.md — NERIS AWS Production Deployment Guide
+# DEPLOYMENT.md — NERIS — North-East Regional Emergency Transit System AWS Deployment Guide
 
-**Project**: NERIS (North East Disaster Resilience & Intelligent Logistics Network)  
+**Project**: NERIS — North-East Regional Emergency Transit System  
 **Hackathon Track**: AWS / WeMakeDevs First Commit — **Ship It Track**  
 **Region**: `ap-south-1` (Asia Pacific - Mumbai)  
+*Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
+
 
 ---
 

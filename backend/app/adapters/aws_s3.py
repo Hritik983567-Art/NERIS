@@ -76,10 +76,15 @@ class S3StorageAdapter:
                 logger.info(f"Successfully uploaded evidence photo '{filename}' to Amazon S3 key '{s3_key}'.")
                 uploaded_to_s3 = True
             except (BotoCoreError, ClientError) as err:
-                logger.warning(f"Amazon S3 upload notice ({err}). Storing locally.")
+                if settings.is_production:
+                    logger.error(f"Amazon S3 upload failed in PRODUCTION mode: {err}")
+                    raise RuntimeError(f"Amazon S3 upload failed in PRODUCTION mode: {err}")
+                logger.warning(f"Amazon S3 upload notice ({err}). Storing locally in development mode.")
 
         if not uploaded_to_s3:
-            # Local fallback media save
+            if settings.is_production:
+                raise RuntimeError("Amazon S3 client unconfigured or unavailable in PRODUCTION mode.")
+            # Local fallback media save (Development mode only)
             if not os.path.exists(LOCAL_UPLOADS_DIR):
                 os.makedirs(LOCAL_UPLOADS_DIR, exist_ok=True)
             local_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
