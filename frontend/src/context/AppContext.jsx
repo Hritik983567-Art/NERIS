@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translations } from '../data/translations';
 import { incidentMarkers, activeFleets, nerStates } from '../data/nerData';
 import { api } from '../services/api';
+import { offlineQueueDB } from '../services/offlineQueueDB';
+
 
 export const AppContext = createContext();
 
@@ -318,9 +320,6 @@ export const AppProvider = ({ children }) => {
 
   const t = translations[lang] || translations.en;
 
-import { offlineQueueDB } from '../services/offlineQueueDB';
-
-// In AppProvider component:
   // Initialize offline queue from IndexedDB on mount & set up online/offline event listeners
   useEffect(() => {
     offlineQueueDB.getAllQueuedIncidents().then((items) => {
