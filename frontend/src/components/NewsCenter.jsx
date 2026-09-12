@@ -275,8 +275,8 @@ export const NewsCenter = () => {
         )}
 
         {/* Category Classification Chips Bar */}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-muted)', marginRight: '4px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'nowrap', overflowX: 'auto', alignItems: 'center', paddingBottom: '4px', scrollbarWidth: 'thin' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-muted)', marginRight: '4px', flexShrink: 0 }}>
             Categories:
           </span>
 
@@ -289,7 +289,9 @@ export const NewsCenter = () => {
                 background: selectedCategory === cat.id ? '#2563EB' : undefined,
                 color: selectedCategory === cat.id ? '#FFF' : undefined,
                 padding: '4px 10px',
-                fontSize: '0.72rem'
+                fontSize: '0.72rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               {cat.icon} {getLocalizedCategory(cat.id, lang)}
