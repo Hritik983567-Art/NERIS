@@ -92,6 +92,19 @@ export const api = {
     }
   },
 
+  getNetworkCorridors: async (state = null) => {
+    try {
+      const url = state ? `${API_BASE_URL}/network/corridors?state=${encodeURIComponent(state)}` : `${API_BASE_URL}/network/corridors`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch network corridors');
+      return await res.json();
+    } catch (err) {
+      console.warn('Backend dynamic network corridors unavailable:', err.message);
+      return null;
+    }
+  },
+
+
   getNetworkOverview: async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/network/overview`);
@@ -175,11 +188,15 @@ export const api = {
     }
   },
 
-  createIncident: async (incidentPayload) => {
+  createIncident: async (incidentPayload, idempotencyKey = null) => {
     try {
+      const extraHeaders = { 'Content-Type': 'application/json' };
+      if (idempotencyKey) {
+        extraHeaders['Idempotency-Key'] = idempotencyKey;
+      }
       const res = await fetch(`${API_BASE_URL}/incidents`, {
         method: 'POST',
-        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        headers: getAuthHeaders(extraHeaders),
         body: JSON.stringify(incidentPayload)
       });
       const data = await res.json();
@@ -407,7 +424,7 @@ export const api = {
       if (isDemo) params.append('is_demo', 'true');
       if (refresh) params.append('refresh', 'true');
 
-      const url = `/api/news?${params.toString()}`;
+      const url = `${API_BASE_URL}/news?${params.toString()}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return await res.json();
@@ -419,7 +436,7 @@ export const api = {
 
   getNewsArticleById: async (id) => {
     try {
-      const res = await fetch(`/api/news/${encodeURIComponent(id)}`);
+      const res = await fetch(`${API_BASE_URL}/news/${encodeURIComponent(id)}`);
       if (!res.ok) throw new Error(`Failed to fetch article ${id}`);
       return await res.json();
     } catch (err) {
@@ -430,7 +447,7 @@ export const api = {
 
   getNewsCategories: async () => {
     try {
-      const res = await fetch('/api/news/categories');
+      const res = await fetch(`${API_BASE_URL}/news/categories`);
       if (!res.ok) throw new Error('Failed to fetch categories');
       return await res.json();
     } catch (err) {
@@ -440,7 +457,7 @@ export const api = {
 
   getNewsLocations: async () => {
     try {
-      const res = await fetch('/api/news/locations');
+      const res = await fetch(`${API_BASE_URL}/news/locations`);
       if (!res.ok) throw new Error('Failed to fetch locations');
       return await res.json();
     } catch (err) {
@@ -450,7 +467,7 @@ export const api = {
 
   getArticleAISummary: async (id) => {
     try {
-      const res = await fetch(`/api/news/${encodeURIComponent(id)}/ai-summary`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/news/${encodeURIComponent(id)}/ai-summary`, { method: 'POST' });
       if (!res.ok) throw new Error('AI summary generation failed');
       return await res.json();
     } catch (err) {
@@ -461,7 +478,7 @@ export const api = {
 
   convertToUnverifiedReport: async (id) => {
     try {
-      const res = await fetch(`/api/news/${encodeURIComponent(id)}/convert-to-unverified-report`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/news/${encodeURIComponent(id)}/convert-to-unverified-report`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to convert article to unverified report');
       return await res.json();
     } catch (err) {
@@ -473,13 +490,13 @@ export const api = {
   // Dedicated Persistent Alerts & Risk Evaluation Workflow
   getAlerts: async (status = null) => {
     try {
-      const url = status ? `/api/alerts?status=${encodeURIComponent(status)}` : `/api/alerts`;
+      const url = status ? `${API_BASE_URL}/alerts?status=${encodeURIComponent(status)}` : `${API_BASE_URL}/alerts`;
       const res = await fetch(url);
-      if (!res.ok) {
-        const fallback = await fetch(status ? `${API_BASE_URL}/alerts?status=${encodeURIComponent(status)}` : `${API_BASE_URL}/alerts`);
-        if (!fallback.ok) throw new Error('Failed to fetch alerts');
-        return await fallback.json();
+      if (res.status === 401) {
+        localStorage.removeItem('cognito_token');
+        localStorage.removeItem('cognito_user');
       }
+      if (!res.ok) throw new Error('Failed to fetch alerts');
       return await res.json();
     } catch (err) {
       console.warn('Backend alerts endpoint unavailable:', err.message);
@@ -489,11 +506,15 @@ export const api = {
 
   createAlert: async (alertPayload) => {
     try {
-      const res = await fetch(`/api/alerts`, {
+      const res = await fetch(`${API_BASE_URL}/alerts`, {
         method: 'POST',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(alertPayload)
       });
+      if (res.status === 401) {
+        localStorage.removeItem('cognito_token');
+        localStorage.removeItem('cognito_user');
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Failed to create alert');
       return data;
@@ -503,13 +524,38 @@ export const api = {
     }
   },
 
+  dispatchSOS: async ({ vehicle_id, reason, location = "NER Emergency Transit Corridor" }) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/alerts/sos-dispatch`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ vehicle_id, reason, location })
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('cognito_token');
+        localStorage.removeItem('cognito_user');
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Emergency SOS dispatch failed');
+      return data;
+    } catch (err) {
+      console.warn('Backend API SOS dispatch error:', err.message);
+      throw err;
+    }
+  },
+
+
   updateAlertStatus: async (alertId, newStatus, commanderId = 'Commander', notes = null) => {
     try {
-      const res = await fetch(`/api/alerts/${encodeURIComponent(alertId)}`, {
+      const res = await fetch(`${API_BASE_URL}/alerts/${encodeURIComponent(alertId)}`, {
         method: 'PATCH',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ status: newStatus, commander_id: commanderId, notes })
       });
+      if (res.status === 401) {
+        localStorage.removeItem('cognito_token');
+        localStorage.removeItem('cognito_user');
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Failed to update alert status');
       return data;
@@ -521,7 +567,7 @@ export const api = {
 
   evaluateIncidentRisk: async (incidentData) => {
     try {
-      const res = await fetch(`/api/alerts/evaluate-incident`, {
+      const res = await fetch(`${API_BASE_URL}/alerts/evaluate-incident`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(incidentData)
@@ -536,11 +582,15 @@ export const api = {
 
   acknowledgeAlert: async (alertId, acknowledgedBy = 'Commander') => {
     try {
-      const res = await fetch(`/api/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+      const res = await fetch(`${API_BASE_URL}/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
         method: 'PATCH',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ action_by: acknowledgedBy })
       });
+      if (res.status === 401) {
+        localStorage.removeItem('cognito_token');
+        localStorage.removeItem('cognito_user');
+      }
       if (!res.ok) throw new Error('Failed to acknowledge alert');
       return await res.json();
     } catch (err) {
@@ -551,11 +601,15 @@ export const api = {
 
   resolveAlert: async (alertId, resolvedBy = 'Commander') => {
     try {
-      const res = await fetch(`/api/alerts/${encodeURIComponent(alertId)}/resolve`, {
+      const res = await fetch(`${API_BASE_URL}/alerts/${encodeURIComponent(alertId)}/resolve`, {
         method: 'PATCH',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ action_by: resolvedBy })
       });
+      if (res.status === 401) {
+        localStorage.removeItem('cognito_token');
+        localStorage.removeItem('cognito_user');
+      }
       if (!res.ok) throw new Error('Failed to resolve alert');
       return await res.json();
     } catch (err) {

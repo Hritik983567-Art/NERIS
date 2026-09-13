@@ -40,8 +40,12 @@ class NERISNewsArticle(BaseModel):
     relevance_score: float = Field(0.0, description="Explainable NERIS emergency logistics relevance score")
     relevance_breakdown: Dict[str, float] = Field(default_factory=dict, description="Detailed component breakdown of relevance score")
     is_demo: bool = Field(False, description="True if demo seed data, False if live external provider article")
-    ai_summary: Optional[str] = Field(None, description="Optional Bedrock/AI-generated summary")
+    verification_status: str = Field("UNVERIFIED_EXTERNAL_ARTICLE", description="Article state: UNVERIFIED_EXTERNAL_ARTICLE, AI_SUMMARY_GENERATED, UNVERIFIED_EXTERNAL_REPORT, or VERIFIED_INCIDENT")
+    is_unverified: bool = Field(True, description="Always True for external news feeds — external news is never an automatic verified incident")
+    ai_summary: Optional[str] = Field(None, description="Optional Bedrock/AI-generated summary stored separately")
+    ai_translation: Optional[str] = Field(None, description="Optional Bedrock/AI-generated translation stored separately")
     original_language: Optional[str] = Field("en", description="Primary language code of article")
+    original_content: Optional[str] = Field(None, description="Preserved original raw article text or summary reference")
 
 
 class BaseNewsProvider(ABC):

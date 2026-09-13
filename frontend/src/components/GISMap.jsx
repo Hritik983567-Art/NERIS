@@ -14,7 +14,8 @@ import {
   ShieldAlert,
   Inbox,
   HelpCircle,
-  Info
+  Info,
+  Sparkles
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
@@ -84,6 +85,7 @@ export const GISMap = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [dockTab, setDockTab] = useState('layers');
   const [backendHubs, setBackendHubs] = useState([]);
+  const [dynamicCorridors, setDynamicCorridors] = useState([]);
   const [liveIncidents, setLiveIncidents] = useState([]);
   const [liveWeatherList, setLiveWeatherList] = useState([]);
   const [aiIntelligence, setAiIntelligence] = useState(null);
@@ -115,6 +117,10 @@ export const GISMap = () => {
       const nodes = await api.getNetworkNodes();
       if (nodes && nodes.length > 0) {
         setBackendHubs(nodes);
+      }
+      const corridors = await api.getNetworkCorridors();
+      if (corridors && corridors.length > 0) {
+        setDynamicCorridors(corridors);
       }
       const liveIncs = await api.getLiveIncidents();
       if (liveIncs && liveIncs.length > 0) {

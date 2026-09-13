@@ -1,7 +1,8 @@
 # HACKATHON CHANGELOG — NERIS — North-East Regional Emergency Transit System
 
 **Project**: NERIS — North-East Regional Emergency Transit System  
-**Hackathon**: AWS / WeMakeDevs First Commit Hackathon — Ship It Track  
+**Hackathon**: AWS / WeMakeDevs First Commit Hackathon — Ship It Track (September 17 – 20, 2026)  
+**Document Status**: Verified / Post-Hackathon Changelog (Hackathon Window: September 17 – 20, 2026)  
 **Repository**: [https://github.com/Hritik983567-Art/NERIS](https://github.com/Hritik983567-Art/NERIS)  
 *Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
 

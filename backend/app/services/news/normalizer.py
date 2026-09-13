@@ -88,5 +88,9 @@ def normalize_article_record(
         image_url=image_url,
         relevance_score=rel_score,
         relevance_breakdown=rel_breakdown,
-        is_demo=is_demo
+        is_demo=is_demo,
+        verification_status="UNVERIFIED_EXTERNAL_ARTICLE",
+        is_unverified=True,
+        original_language="en",
+        original_content=clean_summary
     )

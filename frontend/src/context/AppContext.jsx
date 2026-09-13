@@ -409,8 +409,8 @@ export const AppProvider = ({ children }) => {
 
     if (isOnline) {
       // Direct live submission to AWS DynamoDB
-      const ddbRes = await api.createIncident(newIncidentPayload);
-      const isDdbConfirmed = Boolean(ddbRes && (ddbRes.dynamodb_confirmed || ddbRes.status === 'CREATED' || ddbRes.duplicate_prevented));
+      const ddbRes = await api.createIncident(newIncidentPayload, clientIncId);
+      const isDdbConfirmed = Boolean(ddbRes && (ddbRes.dynamodb_confirmed || ddbRes.status === 'CREATED' || ddbRes.status === 'DUPLICATE_REPLAY' || ddbRes.duplicate_prevented));
 
       if (!isDdbConfirmed && ddbRes && ddbRes.status === 'FAILED') {
         // Fallback to IndexedDB queue if network request fails unexpectedly
@@ -429,13 +429,22 @@ export const AppProvider = ({ children }) => {
         };
       }
 
-      newIncidentPayload.status = isDdbConfirmed ? 'SYNCED' : 'SUBMITTED';
-      newIncidentPayload.dynamodb_confirmed = isDdbConfirmed;
+      // Populate frontend UI state directly from backend-returned persisted record
+      const returnedIncident = (ddbRes && ddbRes.incident) ? ddbRes.incident : newIncidentPayload;
+      const finalIncidentRecord = {
+        ...returnedIncident,
+        is_live: true,
+        status: isDdbConfirmed ? 'SYNCED' : 'SUBMITTED',
+        dynamodb_confirmed: isDdbConfirmed,
+        photoUrl: returnedIncident.photoUrl || finalEvidenceUrl,
+        evidence_url: returnedIncident.evidence_url || finalEvidenceUrl
+      };
 
       setIncidents((prev) => {
-        const exists = prev.some(i => i.id === clientIncId || i.clientIncidentId === clientIncId);
+        const targetId = finalIncidentRecord.id || clientIncId;
+        const exists = prev.some(i => i.id === targetId || i.clientIncidentId === clientIncId);
         if (exists) return prev;
-        return [newIncidentPayload, ...prev];
+        return [finalIncidentRecord, ...prev];
       });
 
       // Also evaluate risk & trigger persistent alert
@@ -507,7 +516,20 @@ export const AppProvider = ({ children }) => {
 
       try {
         const ddbRes = await api.createIncident(item.payload);
-        const isSuccess = Boolean(ddbRes && (ddbRes.dynamodb_confirmed || ddbRes.status === 'CREATED' || ddbRes.duplicate_prevented));
+        
+        // Handle 401 Unauthorized Token Expiration cleanly without losing queued items
+        if (ddbRes && (ddbRes.status === 401 || ddbRes.error === '401 Unauthorized' || ddbRes.error?.includes('Unauthorized'))) {
+          await offlineQueueDB.updateQueuedIncident(item.localQueueId, {
+            status: 'PENDING SYNC',
+            attemptCount,
+            lastAttemptAt,
+            error: 'Authentication expired (HTTP 401). Please re-authenticate.'
+          });
+          console.warn("Offline sync halted: Authentication expired. Re-authentication required.");
+          break; // Stop loop until user re-authenticates
+        }
+
+        const isSuccess = Boolean(ddbRes && (ddbRes.dynamodb_confirmed || ddbRes.status === 'CREATED' || ddbRes.status === 'DUPLICATE_REPLAY' || ddbRes.duplicate_prevented));
 
         if (isSuccess) {
           // 2. Mark as SYNCED in IndexedDB
@@ -537,6 +559,16 @@ export const AppProvider = ({ children }) => {
           });
         }
       } catch (err) {
+        if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
+          await offlineQueueDB.updateQueuedIncident(item.localQueueId, {
+            status: 'PENDING SYNC',
+            attemptCount,
+            lastAttemptAt,
+            error: 'Authentication expired (HTTP 401). Please re-authenticate.'
+          });
+          break;
+        }
+
         await offlineQueueDB.updateQueuedIncident(item.localQueueId, {
           status: 'FAILED',
           attemptCount,
@@ -550,24 +582,46 @@ export const AppProvider = ({ children }) => {
     setOfflineQueue(finalQueue);
   };
 
-  const triggerSOSAlert = (fleetId, message) => {
+
+  const triggerSOSAlert = async (fleetId, message) => {
     const targetFleet = fleets.find(f => f.id === fleetId);
     const fleetName = targetFleet ? `${targetFleet.id} (${targetFleet.category})` : fleetId;
     
-    setBroadcastAlerts((prev) => [
-      {
-        id: `sos-${Date.now()}`,
-        title: `🚨 EMERGENCY SOS DISPATCHED: Convoy ${fleetName}`,
-        type: "sos",
-        timestamp: "JUST NOW",
-        source: `Disaster Cell Vectoring | ${message || 'Urgent Escort Requested'}`
-      },
-      ...prev
-    ]);
+    let serverAlert = null;
+    try {
+      const serverRes = await api.dispatchSOS({
+        vehicle_id: fleetId,
+        reason: message || 'Urgent Escort Requested',
+        location: targetFleet?.currentLocationName || 'NER Emergency Corridor'
+      });
+      if (serverRes && serverRes.alert) {
+        serverAlert = serverRes.alert;
+      }
+    } catch (err) {
+      console.warn("Backend API SOS dispatch failed, falling back to local optimistic item:", err.message);
+    }
+
+    const alertToPush = serverAlert || {
+      id: `sos-${Date.now()}`,
+      alertId: `sos-${Date.now()}`,
+      title: `🚨 EMERGENCY SOS DISPATCHED: Convoy ${fleetName}`,
+      type: "sos",
+      timestamp: "JUST NOW",
+      created_at: new Date().toISOString(),
+      message: `Disaster Cell Vectoring | ${message || 'Urgent Escort Requested'}`,
+      description: `Disaster Cell Vectoring | ${message || 'Urgent Escort Requested'}`,
+      status: "ACTIVE",
+      district: "ASSAM",
+      source: "NERIS Emergency Vectoring Engine"
+    };
+
+    setBroadcastAlerts((prev) => [alertToPush, ...prev]);
+    setAlerts((prev) => [alertToPush, ...prev]);
 
     if (targetFleet) {
       setFleets(prev => prev.map(f => f.id === fleetId ? { ...f, status: 'emergency' } : f));
     }
+    return serverAlert;
   };
 
   const [user, setUser] = useState(() => {

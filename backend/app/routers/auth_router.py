@@ -1,12 +1,4 @@
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel
-from app.adapters.aws_cognito import get_cognito_adapter
-from app.core.dependencies import get_current_user
-
-router = APIRouter(tags=["Amazon Cognito Auth & RBAC"])
-
-from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Header, status
 from pydantic import BaseModel
 from app.adapters.aws_cognito import get_cognito_adapter

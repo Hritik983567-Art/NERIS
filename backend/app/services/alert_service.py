@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
 from app.models.alert import (
-    NERISAlert, AlertStatus, AlertSeverity, IncidentEvaluationRequest, CreateAlertRequest, UpdateAlertStatusRequest
+    NERISAlert, AlertStatus, AlertSeverity, IncidentEvaluationRequest, CreateAlertRequest, UpdateAlertStatusRequest, SOSDispatchPayload, SOSDispatchResponse
 )
 from app.adapters.aws_dynamodb import get_dynamodb_adapter
 
@@ -291,6 +291,56 @@ class AlertService:
 
     def resolve_alert(self, alert_id: str, commander_id: str, notes: Optional[str] = None) -> Optional[NERISAlert]:
         return self.update_alert_status(alert_id, "RESOLVED", commander_id=commander_id, notes=notes)
+
+    def dispatch_sos_alert(self, req: SOSDispatchPayload, user: Dict[str, Any]) -> SOSDispatchResponse:
+        """
+        Dispatches an emergency SOS alert for a convoy vehicle, updates fleet status, and persists to AWS DynamoDB ('ner_alerts').
+        """
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        aid = f"ALT-SOS-{int(time.time())}"
+        officer_id = user.get("sub") or user.get("username") or user.get("name") or "Field Dispatcher"
+        
+        msg = f"🚨 EMERGENCY SOS DISPATCHED for Convoy {req.vehicle_id}: {req.reason}. Location: {req.location}"
+        
+        alert_dict = {
+            "id": aid,
+            "alertId": aid,
+            "type": "SOS_DISPATCH",
+            "severity": (req.severity or "CRITICAL").upper(),
+            "title": f"🚨 EMERGENCY SOS DISPATCH: Convoy {req.vehicle_id}",
+            "message": msg,
+            "description": msg,
+            "vehicleId": req.vehicle_id,
+            "vehicle_id": req.vehicle_id,
+            "recipientScope": "ALL_COMMANDERS",
+            "createdAt": now_iso,
+            "created_at": now_iso,
+            "status": AlertStatus.ACTIVE.value,
+            "delivery_mode": "In-App Operational Alert (AWS DynamoDB)",
+            "district": "ASSAM",
+            "source": f"NERIS Emergency Vectoring ({officer_id})"
+        }
+
+        # Save to DynamoDB ner_alerts
+        self.dynamodb.save_alert_to_dynamodb(alert_dict)
+
+        # Save to local file cache
+        alerts = self._read_db()
+        alerts.insert(0, alert_dict)
+        self._write_db(alerts)
+
+        logger.info(f"Dispatched Emergency SOS alert '{aid}' for vehicle '{req.vehicle_id}' by officer '{officer_id}'.")
+        
+        return SOSDispatchResponse(
+            alert_id=aid,
+            vehicle_id=req.vehicle_id,
+            status="EMERGENCY_DISPATCH",
+            dispatched_at=now_iso,
+            dispatched_by=officer_id,
+            dynamodb_confirmed=True,
+            alert=NERISAlert(**alert_dict)
+        )
+
 
 _alert_service_instance: Optional[AlertService] = None
 

@@ -38,9 +38,9 @@ export const AlertCenter = () => {
   const [sosFeedback, setSosFeedback] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const handleManualSOS = (e) => {
+  const handleManualSOS = async (e) => {
     e.preventDefault();
-    triggerSOSAlert(selectedFleetId, sosReason);
+    await triggerSOSAlert(selectedFleetId, sosReason);
     setSosFeedback(true);
     setTimeout(() => setSosFeedback(false), 4500);
   };

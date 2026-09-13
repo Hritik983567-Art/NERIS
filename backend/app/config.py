@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # Amazon Cognito User Pool & App Client
     COGNITO_USER_POOL_ID: Optional[str] = Field(default=None, description="Cognito User Pool ID")
     COGNITO_CLIENT_ID: Optional[str] = Field(default=None, description="Cognito App Client ID")
+    JWT_SECRET: str = Field(default="neris-jwt-secret-key-ap-south-1-2026", description="JWT Signing Secret Key")
 
     # Amazon Bedrock AI Model
     BEDROCK_MODEL_ID: str = Field(default="anthropic.claude-3-haiku-20240307-v1:0", description="Amazon Bedrock Model ID")
@@ -84,6 +85,8 @@ class Settings(BaseSettings):
             missing.append("COGNITO_CLIENT_ID")
         if not self.BEDROCK_MODEL_ID:
             missing.append("BEDROCK_MODEL_ID")
+        if not self.JWT_SECRET or self.JWT_SECRET == "neris-jwt-secret-key-ap-south-1-2026":
+            missing.append("JWT_SECRET (must be explicitly provided via environment variable or AWS Secrets Manager in production)")
         return missing
 
 _settings_instance: Optional[Settings] = None

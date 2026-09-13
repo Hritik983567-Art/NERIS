@@ -1,14 +1,16 @@
 import logging
 import networkx as nx
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.data.ner_nodes_edges import build_ner_transportation_graph
-from app.models.network import NetworkNodeModel, NetworkEdgeModel, NetworkOverviewResponse
+from app.models.network import NetworkNodeModel, NetworkEdgeModel, NetworkOverviewResponse, CorridorStatusModel
+from app.adapters.aws_dynamodb import get_dynamodb_adapter
 
 logger = logging.getLogger("ner_logitrack.network_service")
 
 class NetworkGraphService:
     def __init__(self):
         self.graph: nx.Graph = build_ner_transportation_graph()
+        self.dynamodb = get_dynamodb_adapter()
         logger.info("NetworkGraphService initialized with NetworkX graph.")
 
     def get_all_nodes(self, state: str = None) -> List[NetworkNodeModel]:
@@ -42,6 +44,49 @@ class NetworkGraphService:
             ))
         return edges
 
+    def get_corridor_statuses(self, state_filter: Optional[str] = None) -> List[CorridorStatusModel]:
+        incidents = self.dynamodb.get_all_incidents()
+        edges = self.get_all_edges()
+        corridors_map: Dict[str, CorridorStatusModel] = {}
+
+        for e in edges:
+            hname = e.highway_name
+            node_from_data = self.graph.nodes.get(e.from_node, {})
+            node_state = node_from_data.get("state", "ASSAM")
+
+            if state_filter and state_filter.lower() != 'all' and node_state.lower() != state_filter.lower():
+                continue
+
+            affecting = [
+                inc for inc in incidents
+                if str(inc.get("status", "")).upper() != "RESOLVED" and (
+                    hname.lower() in str(inc.get("title", "")).lower() or
+                    hname.lower() in str(inc.get("location_name", "")).lower() or
+                    e.from_node.lower() in str(inc.get("title", "")).lower() or
+                    e.to_node.lower() in str(inc.get("title", "")).lower()
+                )
+            ]
+
+            status_val = "clear"
+            if any(str(inc.get("severity", "")).upper() == "CRITICAL" or float(inc.get("estimated_blockage_pct", 0) or 0) >= 80 for inc in affecting):
+                status_val = "blocked"
+            elif len(affecting) > 0 or e.vulnerability_index >= 0.7:
+                status_val = "caution"
+
+            corridors_map[hname] = CorridorStatusModel(
+                id=hname,
+                name=f"{e.from_node} - {e.to_node} Corridor ({hname})",
+                route=f"{e.from_node} -> {e.to_node}",
+                state=node_state,
+                status=status_val,
+                active_incidents_count=len(affecting),
+                vulnerability_index=e.vulnerability_index,
+                length_km=e.length_km,
+                max_weight_tons=e.max_weight_tons
+            )
+
+        return list(corridors_map.values())
+
     def get_overview(self) -> NetworkOverviewResponse:
         nodes = self.get_all_nodes()
         edges = self.get_all_edges()
@@ -56,6 +101,7 @@ class NetworkGraphService:
             high_vulnerability_corridors=high_vul,
             average_elevation_m=avg_elev
         )
+
 
 _network_service_instance = None
 

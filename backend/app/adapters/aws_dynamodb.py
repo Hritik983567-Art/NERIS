@@ -138,8 +138,11 @@ class DynamoDBAdapter:
             "longitude": Decimal(str(raw_lng)),
             "lat": Decimal(str(raw_lat)),
             "lng": Decimal(str(raw_lng)),
-            "reporter": str(incident_data.get("reportedBy") or incident_data.get("reporter", "Field Officer")),
-            "reportedBy": str(incident_data.get("reportedBy") or incident_data.get("reporter", "Field Officer")),
+            "reporter": str(incident_data.get("reported_by") or incident_data.get("reportedBy") or incident_data.get("reporter", "Field Officer")),
+            "reportedBy": str(incident_data.get("reported_by") or incident_data.get("reportedBy") or incident_data.get("reporter", "Field Officer")),
+            "reported_by": str(incident_data.get("reported_by") or incident_data.get("reportedBy") or incident_data.get("reporter", "Field Officer")),
+            "reported_by_role": str(incident_data.get("reported_by_role") or "FIELD_OFFICER"),
+            "reported_by_user_id": str(incident_data.get("reported_by_user_id") or "USR-OFFICER"),
             "description": str(incident_data.get("description", "Active hazard report")),
             "timestamp": str(incident_data.get("timestamp", iso_now)),
             "createdAt": str(incident_data.get("createdAt") or incident_data.get("timestamp", iso_now)),
@@ -477,7 +480,13 @@ class DynamoDBAdapter:
             "severity": str(article_data.get("severity", "LOW")).upper(),
             "image_url": article_data.get("image_url"),
             "relevance_score": float(article_data.get("relevance_score", 0.0)),
-            "is_demo": bool(article_data.get("is_demo", False))
+            "is_demo": bool(article_data.get("is_demo", False)),
+            "verification_status": str(article_data.get("verification_status", "UNVERIFIED_EXTERNAL_ARTICLE")),
+            "is_unverified": bool(article_data.get("is_unverified", True)),
+            "original_language": str(article_data.get("original_language", "en")),
+            "original_content": article_data.get("original_content") or str(article_data.get("summary", "")),
+            "ai_summary": article_data.get("ai_summary"),
+            "ai_translation": article_data.get("ai_translation")
         }
 
         saved_to_aws = False

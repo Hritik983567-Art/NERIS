@@ -1,7 +1,8 @@
 # IMPLEMENTATION STATUS & AUDIT REPORT — NERIS PLATFORM
 
 **Project**: NERIS — North-East Regional Emergency Transit System  
-**Hackathon**: AWS / WeMakeDevs First Commit Hackathon  
+**Hackathon**: AWS / WeMakeDevs First Commit Hackathon (September 17 – 20, 2026)  
+**Document Status**: Verified / Post-Hackathon Audit & Implementation Status (Hackathon Window: September 17 – 20, 2026)  
 **Target AWS Region**: `ap-south-1`  
 *Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
 
@@ -49,42 +50,44 @@ The following existing UI components were fully preserved without breaking chang
 
 ## 3. Implementation Matrix & Current Status
 
-| Feature / Component | Baseline State | Target AWS State | Current Status |
-| :--- | :--- | :--- | :--- |
-| **AWS Infrastructure** | Local process | API Gateway + Lambda (`Mangum`) | **VERIFIED & DEPLOYED** |
-| **Incident Database** | Local JSON file | Amazon DynamoDB (`ner_incidents`) | **VERIFIED & DEPLOYED** |
-| **Media Storage** | Local disk folder | Amazon S3 (`neris-evidence-photos-ap-south-1`) | **VERIFIED & DEPLOYED** |
-| **AI Assessment** | Static mock text | Amazon Bedrock (`claude-3-haiku`) | **VERIFIED & DEPLOYED** |
-| **User Authentication** | Frontend local state | Amazon Cognito JWT Bearer validation | **VERIFIED & DEPLOYED** |
-| **Offline Batch Sync** | Unsynchronized local array | `POST /api/v1/incidents/batch-sync` + `operation_id` Idempotency | **VERIFIED & DEPLOYED** |
-| **Operational Routing** | NetworkX local graph | Dijkstra Risk Solver + Alternate Detour | **VERIFIED & DEPLOYED** |
-| **Alert Management** | In-memory React state | Persistent DynamoDB + Commander Acknowledge/Resolve | **VERIFIED & DEPLOYED** |
+| Feature / Component | Baseline State | Target AWS State | Code Implementation | Local Verification | Cloud Deployment Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **AWS Infrastructure** | Local process | API Gateway + Lambda (`Mangum`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| **Incident Database** | Local JSON file | Amazon DynamoDB (`ner_incidents`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| **Media Storage** | Local disk folder | Amazon S3 (`neris-evidence-photos-ap-south-1`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| **AI Assessment** | Static mock text | Amazon Bedrock (`claude-3-haiku`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| **User Authentication** | Frontend local state | Amazon Cognito JWT Bearer validation | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| **Offline Batch Sync** | Unsynchronized local array | `POST /api/v1/incidents/batch-sync` + `operation_id` Idempotency | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| **Operational Routing** | NetworkX local graph | Dijkstra Risk Solver + Alternate Detour | `IMPLEMENTED` | `TESTED LOCALLY` | `TESTED LOCALLY` (Engine) |
+| **Alert Management** | In-memory React state | Persistent DynamoDB + Commander Acknowledge/Resolve | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| **Emergency SOS Dispatch** | In-memory UI trigger | `POST /api/v1/alerts/sos-dispatch` + DynamoDB `ner_alerts` | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| **GIS Map Network (Tab 1)** | Static hub array | `GET /api/v1/network/nodes`, `/edges`, `/corridors` + DynamoDB Incidents | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
 
 ---
 
-## 4. End-to-End Acceptance Tests
+## 4. End-to-End Acceptance Tests (Local System Verification)
 
-1. **Test 1: Health & Deployed Infrastructure**  
-   - Execute `GET /health` on live API Gateway endpoint.  
+1. **Test 1: Health & Local Server Infrastructure (`TESTED LOCALLY`)**  
+   - Execute `GET /health` on local FastAPI endpoint (`http://localhost:8000/health`).  
    - Expected Output: `200 OK`, `status: "HEALTHY"`, `aws_region: "ap-south-1"`.
 
-2. **Test 2: Live Incident Ingestion & Map Marker Placement**  
-   - Submit new incident via `POST /incidents`.  
-   - Expected Output: `201 Created`, incident saved to DynamoDB, visible on GIS Map inspector.
+2. **Test 2: Field Incident Ingestion & Map Marker Placement (`TESTED LOCALLY`)**  
+   - Submit new incident via `POST /api/v1/incidents`.  
+   - Expected Output: `201 Created`, incident saved, visible on GIS Map inspector.
 
-3. **Test 3: Amazon Bedrock AI Intelligence Generation**  
+3. **Test 3: Amazon Bedrock AI Intelligence Generation (`TESTED LOCALLY`)**  
    - Submit `POST /api/v1/incidents/{id}/ai-intelligence`.  
    - Expected Output: `200 OK`, returns structured JSON summary, operational impact, recommended priority, verification questions, and suggested actions.
 
-4. **Test 4: Operational Route Risk Evaluation & Detour**  
+4. **Test 4: Operational Route Risk Evaluation & Detour (`TESTED LOCALLY`)**  
    - Submit `POST /api/v1/routes/compute` with start/destination nodes.  
    - Expected Output: Returns primary route, alternate detour route, risk score, and risk factor list.
 
-5. **Test 5: Alert Lifecycle Management**  
-   - Create high-severity incident $\rightarrow$ verify `ACTIVE` alert created in DynamoDB.  
+5. **Test 5: Alert Lifecycle Management (`TESTED LOCALLY`)**  
+   - Create high-severity incident $\rightarrow$ verify `ACTIVE` alert created in database.  
    - Authenticate as Commander $\rightarrow$ issue `PATCH /api/v1/alerts/{id}/acknowledge` and `PATCH /api/v1/alerts/{id}/resolve`.  
    - Expected Output: Status transitions smoothly to `ACKNOWLEDGED` and `RESOLVED`.
 
-6. **Test 6: Offline Batch Sync & Idempotency**  
+6. **Test 6: Offline Batch Sync & Idempotency (`TESTED LOCALLY`)**  
    - Post offline item to `POST /api/v1/incidents/batch-sync` $\rightarrow$ returns `sync_confirmed: true`.  
    - Re-submit identical batch item with same `operation_id` $\rightarrow$ returns `duplicate_prevented: true`.

@@ -26,3 +26,15 @@ class NetworkOverviewResponse(BaseModel):
     states_covered: List[str] = Field(..., description="List of NER states integrated")
     high_vulnerability_corridors: int = Field(..., description="Count of edges with vulnerability index > 0.70")
     average_elevation_m: float = Field(..., description="Average node elevation across graph")
+
+class CorridorStatusModel(BaseModel):
+    id: str = Field(..., description="Corridor highway identifier e.g. NH-27")
+    name: str = Field(..., description="Corridor name e.g. Guwahati - Siliguri Transit Corridor")
+    route: str = Field(..., description="Route segment nodes")
+    state: str = Field(..., description="Primary state location")
+    status: str = Field("clear", description="Corridor accessibility status: clear | caution | blocked")
+    active_incidents_count: int = Field(0, description="Number of active DynamoDB incident hazards affecting this corridor")
+    vulnerability_index: float = Field(0.3, description="Hazard vulnerability index")
+    length_km: float = Field(..., description="Corridor length in km")
+    max_weight_tons: float = Field(30.0, description="Bridge weight capacity limit in metric tonnes")
+

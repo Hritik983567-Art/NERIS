@@ -378,7 +378,10 @@ export const NewsCenter = () => {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.72rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.72rem', flexWrap: 'wrap' }}>
+          <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.12)', color: '#059669', border: '1px solid #10B981', fontWeight: 800 }}>
+            ⚡ AWS EventBridge Scheduled Ingestion: ACTIVE (Rate: 1 Hour)
+          </span>
           {lastRetrievedAt && (
             <span style={{ color: 'var(--color-muted)' }}>
               Last synchronized: <strong>{lastRetrievedAt}</strong> {isCached && '(Cached)'}
@@ -545,10 +548,13 @@ export const NewsCenter = () => {
                       {getLocalizedCategory(article.category, lang)} • {getLocalizedSeverity(article.severity, lang)}
                     </span>
 
-                    {article.is_demo ? (
-                      <span className="pill warning" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>DEMO DATA</span>
-                    ) : (
-                      <span className="pill clear" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>LIVE FEED</span>
+                    <span className="pill warning" style={{ fontSize: '0.6rem', padding: '1px 6px', background: 'rgba(217, 119, 6, 0.15)', color: '#D97706', border: '1px solid #D97706' }}>
+                      UNVERIFIED EXTERNAL NEWS
+                    </span>
+                    {article.original_language && (
+                      <span className="pill clear" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>
+                        LANG: {article.original_language.toUpperCase()}
+                      </span>
                     )}
                   </div>
 

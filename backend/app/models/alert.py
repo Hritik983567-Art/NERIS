@@ -114,3 +114,19 @@ class AlertActionRequest(BaseModel):
 
     def get_commander_id(self) -> str:
         return self.commander_id or self.action_by or self.commander_name or "Cmdr. R. Gogoi"
+
+class SOSDispatchPayload(BaseModel):
+    vehicle_id: str = Field(..., description="Target supply convoy or vehicle identifier e.g. NER-MED-8041")
+    reason: str = Field(..., description="Operational emergency dispatch reason e.g. Urgent medical escort required through landslide zone")
+    location: Optional[str] = Field("NER Emergency Transit Corridor", description="Current location or route segment")
+    severity: Optional[str] = Field("CRITICAL", description="Emergency severity level: CRITICAL | HIGH")
+
+class SOSDispatchResponse(BaseModel):
+    alert_id: str = Field(..., description="Generated persistent alert ID e.g. ALT-SOS-1789283863")
+    vehicle_id: str = Field(..., description="Associated convoy vehicle ID")
+    status: str = Field("EMERGENCY_DISPATCH", description="Updated fleet vehicle status")
+    dispatched_at: str = Field(..., description="ISO 8601 UTC dispatch timestamp")
+    dispatched_by: str = Field(..., description="Authenticated officer ID or username who dispatched SOS")
+    dynamodb_confirmed: bool = Field(True, description="True if alert persisted to Amazon DynamoDB table 'ner_alerts'")
+    alert: NERISAlert = Field(..., description="Full persisted NERIS alert object")
+

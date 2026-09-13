@@ -302,9 +302,9 @@ class NewsServiceManager:
                     self._provider_status = "LIVE_EXTERNAL_FEED"
                     self._is_live_available = True
                 else:
-                    # If live provider is completely unreachable, return empty list or fallback notice
-                    articles = []
-                    self._provider_status = "UNAVAILABLE"
+                    # If live provider is completely unreachable or rate limited, fall back to seed dataset so feed stays resilient
+                    articles = await self.demo_provider.fetch_articles()
+                    self._provider_status = "CACHED_FALLBACK_DEMO"
                     self._is_live_available = False
 
             self._cached_articles = articles

@@ -1,6 +1,8 @@
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Query, HTTPException, status, Depends, Request
-from app.models.alert import NERISAlert, IncidentEvaluationRequest, AlertActionRequest, CreateAlertRequest, UpdateAlertStatusRequest
+from app.models.alert import (
+    NERISAlert, IncidentEvaluationRequest, AlertActionRequest, CreateAlertRequest, UpdateAlertStatusRequest, SOSDispatchPayload, SOSDispatchResponse
+)
 from app.services.alert_service import get_alert_service
 from app.core.dependencies import require_roles
 
@@ -133,4 +135,25 @@ async def resolve_alert(
     if not alert:
         raise HTTPException(status_code=404, detail=f"Alert '{alert_id}' not found.")
     return alert
+
+@router.post("/alerts/sos-dispatch", response_model=SOSDispatchResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/api/alerts/sos-dispatch", response_model=SOSDispatchResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/api/v1/alerts/sos-dispatch", response_model=SOSDispatchResponse, status_code=status.HTTP_201_CREATED)
+async def dispatch_emergency_sos(
+    payload: SOSDispatchPayload,
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "DISPATCHER", "ADMIN"]))
+):
+    """
+    Dispatches a real-time emergency SOS vector alert for a convoy vehicle.
+    Persists alert into AWS DynamoDB ('ner_alerts'), updates fleet status, and returns dispatch response.
+    """
+    if not payload.vehicle_id:
+        raise HTTPException(status_code=400, detail="Validation Error: 'vehicle_id' is required for emergency SOS dispatch.")
+    if not payload.reason:
+        raise HTTPException(status_code=400, detail="Validation Error: 'reason' is required for emergency SOS dispatch.")
+
+    service = get_alert_service()
+    response = service.dispatch_sos_alert(payload, user)
+    return response
+
 

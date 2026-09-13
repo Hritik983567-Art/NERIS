@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Header, status, Depends
 from app.services.incidents_service import get_incidents_service
 from app.core.dependencies import require_roles, get_current_user
 
@@ -16,6 +16,267 @@ async def get_all_incidents():
     service = get_incidents_service()
     incidents = service.get_live_incidents()
     return incidents
+
+@router.post("/incidents", status_code=status.HTTP_201_CREATED)
+@router.post("/api/incidents", status_code=status.HTTP_201_CREATED)
+@router.post("/api/v1/incidents", status_code=status.HTTP_201_CREATED)
+async def create_new_incident(
+    payload: Dict[str, Any],
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
+):
+    """
+    Backend-Authoritative Incident Creation Workflow:
+    1. Validates JWT Bearer token & server-side RBAC role.
+    2. Validates request body presence and non-empty required fields (title, description).
+    3. Validates numerical GPS coordinates (latitude [-90, 90], longitude [-180, 180]).
+    4. Validates incident type against valid taxonomy.
+    5. Validates severity against valid taxonomy.
+    6. Generates unique incident ID server-side.
+    7. Records authenticated user identity (username/sub/role) from verified JWT server-side.
+    8. Records creation timestamp server-side in UTC ISO-8601.
+    9. Enforces idempotency using operation_id / Idempotency-Key.
+    10. Persists item to AWS DynamoDB ('ner_incidents' table).
+    11. Returns HTTP 201 Created (or 200 OK for idempotent replay) with full persisted incident.
+    """
+    # 1. Validate Payload Presence
+    if not payload or not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Validation Error: Incident request body payload cannot be empty."
+        )
+
+    # 2. Validate Required Fields (title, description)
+    title = str(payload.get("title") or "").strip()
+    description = str(payload.get("description") or "").strip()
+
+    if not title or not description:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Validation Error: Incident 'title' and 'description' are required non-empty string fields."
+        )
+
+    # 3. Validate GPS Coordinates (latitude, longitude)
+    lat_raw = payload.get("latitude", payload.get("lat"))
+    lng_raw = payload.get("longitude", payload.get("lng"))
+
+    if lat_raw is None or lng_raw is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Validation Error: Incident 'latitude' and 'longitude' GPS coordinates are required."
+        )
+
+    try:
+        lat = float(lat_raw)
+        lng = float(lng_raw)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Validation Error: 'latitude' and 'longitude' must be valid numerical GPS coordinates."
+        )
+
+    if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lng <= 180.0):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Validation Error: 'latitude' must be between -90 and 90, and 'longitude' between -180 and 180."
+        )
+
+    # 4. Validate Incident Type
+    VALID_TYPES = {"LANDSLIDE", "FLASH_FLOOD", "BRIDGE_COLLAPSE", "ROAD_BLOCKAGE", "EARTHQUAKE", "EXTREME_WEATHER", "INFRASTRUCTURE_DAMAGE", "OTHER"}
+    raw_type = str(payload.get("incidentType") or payload.get("type", "")).strip().upper()
+    if not raw_type or raw_type not in VALID_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Validation Error: Invalid incident type '{raw_type}'. Allowed types: {sorted(list(VALID_TYPES))}"
+        )
+
+    # 5. Validate Severity
+    VALID_SEVERITIES = {"CRITICAL", "HIGH", "MODERATE", "LOW"}
+    raw_sev = str(payload.get("severity", "")).strip().upper()
+    if not raw_sev or raw_sev not in VALID_SEVERITIES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Validation Error: Invalid severity '{raw_sev}'. Allowed severities: {sorted(list(VALID_SEVERITIES))}"
+        )
+
+    # 6. Extract Authenticated User Identity Server-Side (NEVER trust client-provided reporter identity or role)
+    authenticated_username = user.get("username") or user.get("sub") or "field_officer"
+    authenticated_userId = user.get("sub") or f"USR-{authenticated_username.upper()}"
+    authenticated_role = user.get("role", "FIELD_OFFICER")
+
+    # 7. Generate Server-Side Timestamps & Unique Incident / Operation IDs
+    import uuid
+    import time
+    from datetime import datetime, timezone
+
+    iso_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    op_key = idempotency_key or payload.get("operation_id") or payload.get("clientIncidentId") or payload.get("client_incident_id") or f"OP-{uuid.uuid4().hex[:8]}"
+    server_generated_id = f"INC-{int(time.time())}-{uuid.uuid4().hex[:6].upper()}"
+
+    # Build backend-authoritative incident item
+    authoritative_payload = {
+        "id": server_generated_id,
+        "incidentId": server_generated_id,
+        "clientIncidentId": op_key,
+        "operation_id": op_key,
+        "title": title,
+        "description": description,
+        "type": raw_type,
+        "incidentType": raw_type,
+        "severity": raw_sev,
+        "latitude": lat,
+        "longitude": lng,
+        "lat": lat,
+        "lng": lng,
+        "district": str(payload.get("district", payload.get("state", "ASSAM"))).upper(),
+        "state": str(payload.get("state", "ASSAM")).upper(),
+        "location_name": str(payload.get("location_name") or payload.get("locationName") or "NER Corridor"),
+        "reported_by": authenticated_username,
+        "reporter": authenticated_username,
+        "reported_by_user_id": authenticated_userId,
+        "reported_by_role": authenticated_role,
+        "createdAt": iso_now,
+        "created_at": iso_now,
+        "timestamp": iso_now,
+        "status": "REPORTED",
+        "verificationStatus": "UNVERIFIED",
+        "estimated_blockage_pct": float(payload.get("estimated_blockage_pct", 80.0)),
+        "evidence_url": str(payload.get("evidence_url") or payload.get("photoUrl") or ""),
+        "photoUrl": str(payload.get("photoUrl") or payload.get("evidence_url") or "")
+    }
+
+    # 8. Persist Item to AWS DynamoDB
+    service = get_incidents_service()
+    try:
+        result = service.create_incident(authoritative_payload)
+    except Exception as err:
+        from app.config import get_settings
+        st = get_settings()
+        if st.is_production:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"DynamoDB Persistence Failure: Failed to write incident to AWS DynamoDB table: {str(err)}"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Incident Persistence Error: {str(err)}"
+        )
+
+    # In Production mode, verify DynamoDB write succeeded
+    from app.config import get_settings
+    st = get_settings()
+    if st.is_production and not result.get("dynamodb_confirmed") and not result.get("duplicate_prevented"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="DynamoDB Persistence Failure: AWS DynamoDB operation failed to store incident record."
+        )
+
+    # 9. Real Incident Workflow: Risk Evaluation & Alert Generation
+    generated_alert = None
+    try:
+        from app.services.alert_service import get_alert_service
+        from app.models.alert import IncidentEvaluationRequest
+
+        alert_svc = get_alert_service()
+        eval_req = IncidentEvaluationRequest(
+            incident_id=result.get("id"),
+            title=result.get("title"),
+            severity=result.get("severity"),
+            district=result.get("district", "ASSAM"),
+            description=result.get("description"),
+            estimated_blockage_pct=result.get("estimated_blockage_pct", 80.0),
+            reporter=authenticated_username
+        )
+        alert_obj = alert_svc.evaluate_incident_and_create_alert(eval_req)
+        if alert_obj:
+            generated_alert = alert_obj.dict()
+    except Exception as ex:
+        import logging
+        logging.getLogger("neris.incidents_router").error(f"Error in alert generation workflow: {ex}")
+
+    is_confirmed = bool(result.get("dynamodb_confirmed") or result.get("duplicate_prevented") or result.get("id"))
+    is_duplicate = bool(result.get("duplicate_prevented"))
+
+    return {
+        "status": "DUPLICATE_REPLAY" if is_duplicate else "CREATED",
+        "dynamodb_confirmed": is_confirmed,
+        "duplicate_prevented": is_duplicate,
+        "message": f"Incident '{result.get('id')}' successfully persisted to AWS DynamoDB.",
+        "incident": result,
+        "generated_alert": generated_alert
+    }
+
+@router.post("/incidents/upload-evidence", status_code=status.HTTP_200_OK)
+@router.post("/api/incidents/upload-evidence", status_code=status.HTTP_200_OK)
+@router.post("/api/v1/incidents/upload-evidence", status_code=status.HTTP_200_OK)
+async def upload_evidence_photo(
+    file: UploadFile = File(...),
+    incident_id: Optional[str] = Form(None),
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
+):
+    """
+    Amazon S3 Evidence Media Upload Pipeline:
+    1. Validates authentication & user RBAC role.
+    2. Validates maximum file size limit (10MB).
+    3. Validates MIME type and image magic bytes (JPEG, PNG, WEBP).
+    4. Generates safe unique S3 object key (no path traversal).
+    5. Uploads file with AES256 server-side encryption to private S3 bucket.
+    6. Returns S3 key, evidence metadata, and presigned download URL reference.
+    """
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="Validation Error: Upload file payload is required.")
+
+    contents = await file.read()
+    if not contents or len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Validation Error: Uploaded file content cannot be empty.")
+
+    service = get_incidents_service()
+
+    try:
+        result = service.upload_evidence(contents, file.filename, file.content_type or "image/jpeg")
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        from app.config import get_settings
+        if get_settings().is_production:
+            raise HTTPException(status_code=500, detail=f"Amazon S3 evidence upload service error: {str(err)}")
+        raise HTTPException(status_code=500, detail=f"S3 upload service error: {str(err)}")
+
+@router.post("/api/v1/incidents/presigned-upload-url", status_code=status.HTTP_200_OK)
+async def generate_presigned_upload_url(
+    filename: str,
+    content_type: str = "image/jpeg",
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
+):
+    """
+    Generates an Amazon S3 presigned PUT URL allowing authorized frontend clients
+    to upload evidence photos directly to S3 without exposing AWS IAM credentials.
+    """
+    from app.adapters.aws_s3 import get_s3_adapter
+    s3_adapter = get_s3_adapter()
+    try:
+        res = s3_adapter.generate_presigned_upload_url(filename, content_type)
+        return res
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Failed to generate presigned S3 upload URL: {str(err)}")
+
+@router.get("/api/v1/incidents/presigned-download-url", status_code=status.HTTP_200_OK)
+async def generate_presigned_download_url(
+    s3_key: str,
+    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
+):
+    """
+    Generates an Amazon S3 presigned GET URL for authorized access to private evidence photos.
+    """
+    from app.adapters.aws_s3 import get_s3_adapter
+    s3_adapter = get_s3_adapter()
+    url = s3_adapter.generate_presigned_download_url(s3_key)
+    if not url:
+        raise HTTPException(status_code=404, detail="S3 evidence object key not found or presigned URL generation failed.")
+    return {"presigned_url": url, "s3_key": s3_key, "expires_in_seconds": 3600}
 
 @router.get("/incidents/{incident_id}", status_code=status.HTTP_200_OK)
 @router.get("/api/incidents/{incident_id}", status_code=status.HTTP_200_OK)
@@ -64,103 +325,6 @@ async def update_incident_by_id_endpoint(
         "incident": updated
     }
 
-@router.post("/incidents", status_code=status.HTTP_201_CREATED)
-@router.post("/api/incidents", status_code=status.HTTP_201_CREATED)
-@router.post("/api/v1/incidents", status_code=status.HTTP_201_CREATED)
-async def create_new_incident(
-    payload: Dict[str, Any],
-    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
-):
-    """
-    Validation Pipeline & DynamoDB Persistence Workflow:
-    1. Validate required fields (title, latitude, longitude).
-    2. Generate unique incident ID if missing.
-    3. Persist item to AWS DynamoDB ('ner_incidents' table).
-    4. Return stored record with DynamoDB confirmation flag.
-    """
-    if not payload.get("title") and not payload.get("description"):
-        raise HTTPException(status_code=400, detail="Validation Error: Incident 'title' or 'description' is required.")
-
-    lat = payload.get("latitude", payload.get("lat"))
-    lng = payload.get("longitude", payload.get("lng"))
-
-    if lat is None or lng is None:
-        raise HTTPException(status_code=400, detail="Validation Error: Incident 'latitude' and 'longitude' GPS coordinates are required.")
-
-    try:
-        float(lat)
-        float(lng)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="Validation Error: 'latitude' and 'longitude' must be valid numerical GPS coordinates.")
-
-    service = get_incidents_service()
-    result = service.create_incident(payload)
-    
-    # Real Incident Workflow: Risk Evaluation & Alert Generation
-    generated_alert = None
-    try:
-        from app.services.alert_service import get_alert_service
-        from app.models.alert import IncidentEvaluationRequest
-        
-        alert_svc = get_alert_service()
-        
-        blockage_val = payload.get("estimated_blockage_pct") or result.get("estimated_blockage_pct") or 80.0
-        try:
-            blockage_float = float(blockage_val)
-        except (ValueError, TypeError):
-            blockage_float = 80.0
-
-        eval_req = IncidentEvaluationRequest(
-            incident_id=result.get("id") or payload.get("id"),
-            title=result.get("title") or payload.get("title") or f"{result.get('type', 'HAZARD')} Incident",
-            severity=result.get("severity") or payload.get("severity") or "CRITICAL",
-            district=result.get("district") or payload.get("district") or payload.get("state") or "ASSAM",
-            description=result.get("description") or payload.get("description") or "",
-            estimated_blockage_pct=blockage_float,
-            reporter=result.get("reporter") or payload.get("reported_by_badge_id") or user.get("sub", "Field Officer")
-        )
-        alert_obj = alert_svc.evaluate_incident_and_create_alert(eval_req)
-        if alert_obj:
-            generated_alert = alert_obj.dict()
-    except Exception as ex:
-        import logging
-        logging.getLogger("neris.incidents_router").error(f"Error in alert generation workflow: {ex}")
-
-    is_confirmed = bool(result.get("dynamodb_confirmed") or result.get("duplicate_prevented") or result.get("id"))
-    return {
-        "status": "CREATED",
-        "dynamodb_confirmed": is_confirmed,
-        "message": f"Incident '{result.get('id')}' successfully persisted to AWS DynamoDB.",
-        "incident": result,
-        "generated_alert": generated_alert
-    }
-
-@router.post("/incidents/upload-evidence", status_code=status.HTTP_200_OK)
-@router.post("/api/incidents/upload-evidence", status_code=status.HTTP_200_OK)
-@router.post("/api/v1/incidents/upload-evidence", status_code=status.HTTP_200_OK)
-async def upload_evidence_photo(
-    file: UploadFile = File(...),
-    incident_id: Optional[str] = Form(None),
-    user: Dict[str, Any] = Depends(require_roles(["FIELD_OFFICER", "COMMANDER", "ADMIN"]))
-):
-    """
-    Amazon S3 Evidence Media Upload Pipeline:
-    1. Validates file format (JPG, JPEG, PNG, WEBP).
-    2. Validates maximum file size limit (10MB).
-    3. Generates unique S3 object key.
-    4. Uploads file to Amazon S3 bucket ('neris-evidence-photos-ap-south-1').
-    5. Returns S3 URL reference and s3_confirmed flag.
-    """
-    contents = await file.read()
-    service = get_incidents_service()
-
-    try:
-        result = service.upload_evidence(contents, file.filename, file.content_type or "image/jpeg")
-        return result
-    except ValueError as val_err:
-        raise HTTPException(status_code=400, detail=str(val_err))
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=f"S3 upload service error: {str(err)}")
 
 @router.post("/incidents/{incident_id}/ai-intelligence", status_code=status.HTTP_200_OK)
 @router.post("/api/incidents/{incident_id}/ai-intelligence", status_code=status.HTTP_200_OK)
@@ -261,11 +425,28 @@ async def batch_sync_incidents(
                     raw_bytes = base64.b64decode(photo_b64)
                     fname = f"offline_evidence_{op_id.replace(':', '_')}.jpg"
                     s3_res = service.upload_evidence(raw_bytes, fname, "image/jpeg")
-                    if s3_res and s3_res.get("s3_confirmed"):
-                        evidence_url = s3_res.get("evidence_url", evidence_url)
-                        s3_confirmed = True
+                    if s3_res and s3_res.get("evidence_url"):
+                        evidence_url = s3_res.get("evidence_url")
+                        s3_confirmed = bool(s3_res.get("s3_confirmed"))
                 except Exception as s3_err:
                     logger.warning(f"Batch sync S3 upload notice: {s3_err}")
+
+            # Validate Incident Taxonomy & Input Boundaries
+            VALID_TYPES = {"LANDSLIDE", "FLASH_FLOOD", "BRIDGE_COLLAPSE", "ROAD_BLOCKAGE", "EARTHQUAKE", "EXTREME_WEATHER", "INFRASTRUCTURE_DAMAGE", "OTHER"}
+            VALID_SEVERITIES = {"CRITICAL", "HIGH", "MODERATE", "LOW"}
+
+            raw_type = str(item.get("type") or item.get("incidentType", "LANDSLIDE")).strip().upper()
+            if raw_type not in VALID_TYPES:
+                raise ValueError(f"Validation Error: Invalid incident type '{raw_type}'. Allowed types: {sorted(list(VALID_TYPES))}")
+
+            raw_sev = str(item.get("severity", "CRITICAL")).strip().upper()
+            if raw_sev not in VALID_SEVERITIES:
+                raise ValueError(f"Validation Error: Invalid severity '{raw_sev}'. Allowed severities: {sorted(list(VALID_SEVERITIES))}")
+
+            lat_val = float(item.get("latitude") or item.get("lat") or 26.1445)
+            lng_val = float(item.get("longitude") or item.get("lng") or 91.7362)
+            if not (-90.0 <= lat_val <= 90.0) or not (-180.0 <= lng_val <= 180.0):
+                raise ValueError(f"Validation Error: GPS coordinates ({lat_val}, {lng_val}) out of bounds.")
 
             # Map incident fields for DynamoDB
             inc_data = {
@@ -273,18 +454,19 @@ async def batch_sync_incidents(
                 "operation_id": op_id,
                 "client_id": client_id,
                 "title": str(item.get("title", "Field Incident Report")),
-                "type": str(item.get("type", "LANDSLIDE")),
-                "severity": str(item.get("severity", "CRITICAL")),
+                "type": raw_type,
+                "severity": raw_sev,
                 "district": str(item.get("district") or item.get("state") or "ASSAM"),
                 "location_name": str(item.get("location_name") or item.get("locationName") or "NER Corridor"),
-                "latitude": item.get("latitude") or item.get("lat") or 26.1445,
-                "longitude": item.get("longitude") or item.get("lng") or 91.7362,
+                "latitude": lat_val,
+                "longitude": lng_val,
                 "reporter": str(item.get("reporter", "Field Officer")),
                 "description": str(item.get("description", "Offline synced incident report.")),
                 "evidence_url": evidence_url,
-                "evidence_status": "UPLOADED" if s3_confirmed or evidence_url.startswith("http") else "NONE",
+                "evidence_status": "UPLOADED" if (s3_confirmed or evidence_url.startswith("http") or evidence_url.startswith("/uploads")) else "NONE",
                 "timestamp": str(item.get("created_at") or item.get("timestamp") or "")
             }
+
 
             db_res = service.create_incident(inc_data)
             

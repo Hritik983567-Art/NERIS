@@ -154,10 +154,14 @@ class NERRoutingEngine:
                 is_near = False
                 if inc_lat is not None and inc_lng is not None:
                     try:
-                        p_dist = dist_point_to_segment_km(float(inc_lat), float(inc_lng), u_lat, u_lng, v_lat, v_lng)
-                        if p_dist <= 40.0:
-                            is_near = True
-                    except Exception:
+                        flat_lat = float(inc_lat)
+                        flat_lng = float(inc_lng)
+                        # Validate GPS range
+                        if -90.0 <= flat_lat <= 90.0 and -180.0 <= flat_lng <= 180.0:
+                            p_dist = dist_point_to_segment_km(flat_lat, flat_lng, u_lat, u_lng, v_lat, v_lng)
+                            if p_dist <= 30.0:
+                                is_near = True
+                    except (ValueError, TypeError):
                         pass
                 
                 if not is_near:
@@ -172,12 +176,12 @@ class NERRoutingEngine:
 
                     blockage_pct = float(haz.get("estimated_blockage_pct", 0.0) or 0.0)
 
-                    if severity == "CRITICAL" or blockage_pct >= 80.0 or inc_type in {"LANDSLIDE", "BRIDGE_DAMAGE"}:
-                        dijkstra_penalty *= 10000.0  # Force Dijkstra detour
+                    if severity == "CRITICAL" or blockage_pct >= 80.0 or inc_type in {"LANDSLIDE", "BRIDGE_COLLAPSE", "BRIDGE_DAMAGE"}:
+                        dijkstra_penalty *= 10000.0  # Force deterministic Dijkstra detour
                         incident_penalty *= 3.0
                         edge_blocked_segments.append(f"{edge_hwy} ({u} -> {v}): CRITICAL {inc_type} ({haz.get('title')})")
                         edge_risk_factors.append(f"CRITICAL hazard on {edge_hwy}: {haz.get('title')}")
-                    elif severity == "HIGH" or inc_type in {"FLOOD", "ROAD_BLOCKAGE"}:
+                    elif severity == "HIGH" or inc_type in {"FLOOD", "FLASH_FLOOD", "ROAD_BLOCKAGE"}:
                         dijkstra_penalty *= 10.0
                         incident_penalty *= 2.0
                         edge_risk_factors.append(f"HIGH risk incident on {edge_hwy}: {haz.get('title')}")
@@ -187,7 +191,8 @@ class NERRoutingEngine:
                         edge_risk_factors.append(f"MODERATE disruption on {edge_hwy}: {haz.get('title')}")
                     else:
                         dijkstra_penalty *= 1.5
-                        incident_penalty *= 1.2
+                        incident_penalty *= 1.15
+                        edge_risk_factors.append(f"LOW disruption on {edge_hwy}: {haz.get('title')}")
 
         standard_time_hours = round(dist_km / base_speed, 2)
         adjusted_time_hours = round((dist_km / base_speed) * terrain_factor * weather_factor * min(4.0, incident_penalty), 2)
@@ -198,9 +203,9 @@ class NERRoutingEngine:
     def find_optimal_and_alternate_routes(self, request: OptimizeRouteRequest) -> OptimizedRouteResponse:
         """
         Deterministic Risk Engine Execution:
-        1. Validates and resolves origin & destination nodes.
-        2. Retrieves active NERIS incidents from DynamoDB.
-        3. Runs Dijkstra algorithm to calculate dynamic safest primary route.
+        1. Validates and resolves origin & destination nodes on the 15-hub strategic corridor network.
+        2. Validates GPS coordinates and retrieves active NERIS incidents from DynamoDB.
+        3. Runs NetworkX Dijkstra algorithm to compute dynamic safest primary route.
         4. Calculates secondary alternate route by penalizing primary corridors.
         5. Returns structured route payload with polyline geometry, riskScore, riskLevel, and riskFactors.
         """
@@ -241,7 +246,7 @@ class NERRoutingEngine:
         try:
             path_primary = nx.dijkstra_path(self.graph, u_origin, v_dest, weight=primary_weight)
         except nx.NetworkXNoPath:
-            raise ValueError(f"No passable route available connecting '{u_origin}' to '{v_dest}' due to severe road blockades.")
+            raise ValueError(f"No passable route available connecting '{u_origin}' to '{v_dest}' due to severe road blockades on the strategic corridor network.")
 
         # Build Primary Turn-by-Turn Segments & Accumulate Metrics
         turn_by_turn: List[RouteSegment] = []
@@ -367,13 +372,13 @@ class NERRoutingEngine:
         primary_via_str = " -> ".join(path_primary)
         if primary_blocked_segments:
             explanation = (
-                f"Primary Route ({primary_via_str}) selected using deterministic Dijkstra graph evaluation. "
+                f"Primary Route ({primary_via_str}) selected using deterministic Dijkstra graph evaluation over the 15-hub strategic corridor network. "
                 f"Active critical blockades detected on {len(primary_blocked_segments)} segment(s) were detoured. "
                 f"Net travel time is estimated at {total_disaster_eta} hrs over {round(total_dist_km, 1)} km with a risk score of {risk_score}/100 ({risk_level})."
             )
         else:
             explanation = (
-                f"Primary Route ({primary_via_str}) selected as the safest deterministic path connecting {u_origin} to {v_dest}. "
+                f"Primary Route ({primary_via_str}) selected as the safest deterministic path connecting {u_origin} to {v_dest} on the strategic corridor network. "
                 f"This corridor avoids high-severity landslide hazards, respects the {request.convoy_weight_tons}t convoy bridge limit, "
                 f"and provides optimal ETA ({total_disaster_eta} hrs) over a total distance of {round(total_dist_km, 1)} km."
             )
@@ -390,7 +395,6 @@ class NERRoutingEngine:
             from app.adapters.aws_bedrock import get_bedrock_adapter
             bedrock = get_bedrock_adapter()
             if bedrock and bedrock.bedrock_client:
-                b_prompt = f"Provide a 2-sentence operational tactical summary for dispatching a {request.convoy_weight_tons}t convoy from {u_origin} to {v_dest} via {primary_via_str} under {request.weather_condition} weather."
                 bedrock_explanation = f"Bedrock Tactical Assessment: Deterministic path {primary_via_str} evaluated with {risk_score}/100 risk rating."
         except Exception:
             pass

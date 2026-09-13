@@ -104,14 +104,16 @@ aws s3 sync dist/ s3://neris-frontend-web-hosting-ap-south-1 --delete
 
 ---
 
-## 5. Live Endpoint URLs
+## 5. Target Endpoint URLs & Verification Status
 
-- **Live API Gateway Endpoint URL**:  
-  `https://x6u2p9z8y7.execute-api.ap-south-1.amazonaws.com/Prod`
-- **Health Check Endpoint**:  
-  `https://x6u2p9z8y7.execute-api.ap-south-1.amazonaws.com/Prod/health`
-- **Live Frontend Web Application**:  
-  `https://neris-disaster-logistics.awsamplifyapp.com`
+- **Local API Base URL (`TESTED LOCALLY`)**:  
+  `http://localhost:8000/api/v1`
+- **Local Health Check Endpoint (`TESTED LOCALLY`)**:  
+  `http://localhost:8000/health`
+- **Target AWS API Gateway Endpoint URL (`PLANNED - AWS SAM Stack Ready`)**:  
+  `https://<api-id>.execute-api.ap-south-1.amazonaws.com/Prod` *(Generated upon executing `sam deploy`)*
+- **Target AWS Static Web Application (`PLANNED - Web Build Ready`)**:  
+  `https://neris-disaster-logistics.awsamplifyapp.com` *(Provisioned upon hosting deployment)*
 
 ---
 

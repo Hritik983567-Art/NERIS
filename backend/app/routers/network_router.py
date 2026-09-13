@@ -1,6 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Query, status
-from app.models.network import NetworkNodeModel, NetworkEdgeModel, NetworkOverviewResponse
+from app.models.network import NetworkNodeModel, NetworkEdgeModel, NetworkOverviewResponse, CorridorStatusModel
 from app.services.network_service import get_network_service
 
 router = APIRouter(prefix="/api/v1/network", tags=["Tab 1: GIS Map & Infrastructure Network"])
@@ -21,6 +21,14 @@ async def get_network_edges():
     service = get_network_service()
     return service.get_all_edges()
 
+@router.get("/corridors", response_model=List[CorridorStatusModel], status_code=status.HTTP_200_OK)
+async def get_network_corridors(state: Optional[str] = Query(None, description="Filter corridors by state name")):
+    """
+    Returns dynamic highway corridor status evaluated against active DynamoDB incident hazards.
+    """
+    service = get_network_service()
+    return service.get_corridor_statuses(state_filter=state)
+
 @router.get("/overview", response_model=NetworkOverviewResponse, status_code=status.HTTP_200_OK)
 async def get_network_overview():
     """
@@ -28,3 +36,4 @@ async def get_network_overview():
     """
     service = get_network_service()
     return service.get_overview()
+

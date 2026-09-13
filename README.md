@@ -116,21 +116,21 @@ For full details, see [ARCHITECTURE.md](file:///c:/Users/Lenovo/OneDrive/Desktop
 
 ---
 
-## 6. First Commit Feature Checklist
+## 6. Feature Status & Verification Matrix
 
-| FEATURE | AWS SERVICE | IMPLEMENTED? | TESTED? | DEMO READY? |
+| FEATURE | AWS SERVICE | IMPLEMENTATION STATUS | VERIFICATION STATUS | CLOUD DEPLOYMENT STATUS |
 |---|---|---|---|---|
-| Field Incident Reporting & Persistence | Amazon DynamoDB (`ner_incidents`) | YES | YES | YES |
-| Incident Evidence Photo Storage | Amazon S3 (`neris-evidence-photos`) | YES | YES | YES |
-| AI Incident Risk Assessment | Amazon Bedrock (`claude-3-haiku`) | YES | YES | YES |
-| JWT Authentication & Authorization | Amazon Cognito (`NerisCommandUserPool`) | YES | YES | YES |
-| Deterministic Corridor Risk Routing | AWS Lambda + NetworkX Graph | YES | YES | YES |
-| Convoy Telemetry & Proximity Alerts | Amazon DynamoDB (`ner_fleet_telemetry`) | YES | YES | YES |
-| Command Center Alert Lifecycle | Amazon DynamoDB (`ner_alerts`) | YES | YES | YES |
-| Offline Reporting & Idempotent Sync | AWS Lambda (`POST /batch-sync`) | YES | YES | YES |
-| Regional Disaster Intelligence Feed | Amazon EventBridge + DynamoDB | YES | YES | YES |
-| Application API & Lambda Serverless | AWS Lambda + Amazon API Gateway | YES | YES | YES |
-| CloudWatch Centralized Logging | Amazon CloudWatch Logs | YES | YES | YES |
+| Field Incident Reporting & Persistence | Amazon DynamoDB (`ner_incidents`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| Incident Evidence Photo Storage | Amazon S3 (`neris-evidence-photos`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| AI Incident Risk Assessment | Amazon Bedrock (`claude-3-haiku`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| JWT Authentication & Authorization | Amazon Cognito (`NerisCommandUserPool`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| Deterministic Corridor Risk Routing | AWS Lambda + NetworkX Graph | `IMPLEMENTED` | `TESTED LOCALLY` | `TESTED LOCALLY` (Pure Engine) |
+| Convoy Telemetry & Proximity Alerts | Amazon DynamoDB (`ner_fleet_telemetry`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| Command Center Alert Lifecycle | Amazon DynamoDB (`ner_alerts`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| Offline Reporting & Idempotent Sync | AWS Lambda (`POST /batch-sync`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| Regional Disaster Intelligence Feed | Amazon EventBridge + DynamoDB | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| Application API & Lambda Serverless | AWS Lambda + Amazon API Gateway | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| CloudWatch Centralized Logging | Amazon CloudWatch Logs | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
 
 ---
 
