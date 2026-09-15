@@ -23,8 +23,8 @@ flowchart TD
         Bedrock["Amazon Bedrock (Claude 3 Haiku)"]
     end
 
-    SPA == "HTTPS Requests" ==> APIGW
-    APIGW ==> Lambda
+    SPA -->|"HTTPS Requests"| APIGW
+    APIGW --> Lambda
     Lambda --> DDB
     Lambda --> S3
     Lambda --> Cognito

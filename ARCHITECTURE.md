@@ -35,7 +35,7 @@ flowchart TD
         CloudWatch["Amazon CloudWatch Logs"]
     end
 
-    SPA == "HTTPS / REST (Bearer Auth)" ==> APIGW
+    SPA -->|"HTTPS / REST (Bearer Auth)"| APIGW
     Lambda --> Cognito
     Lambda --> DynamoDB
     Lambda --> S3

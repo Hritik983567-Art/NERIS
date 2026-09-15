@@ -55,7 +55,7 @@ flowchart TD
         Bedrock["Amazon Bedrock (Claude 3 Haiku)"]
     end
 
-    Ctx <==>|HTTPS / REST API| Gateway
+    Ctx <-->|"HTTPS / REST API"| Gateway
     RouterInc --> DDB
     RouterInc --> S3
     RouterTel --> DDB

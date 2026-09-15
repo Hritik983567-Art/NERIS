@@ -26,8 +26,8 @@ flowchart TD
         CloudWatch["Amazon CloudWatch (Metrics & Audit Logs)"]
     end
 
-    SPA == "HTTPS Requests (JWT Auth)" ==> APIGW
-    APIGW ==> Lambda
+    SPA -->|"HTTPS Requests (JWT Auth)"| APIGW
+    APIGW --> Lambda
     Lambda --> DDB
     Lambda --> S3
     Lambda --> Cognito
