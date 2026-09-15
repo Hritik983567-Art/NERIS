@@ -41,8 +41,8 @@ flowchart LR
         ClientNew["React 18 Frontend Hardened"]
         ApiGw["Amazon API Gateway"]
         LambdaNew["AWS Lambda (Mangum ASGI)"]
-        DynamoNew[("Amazon DynamoDB (4 Pay-Per-Request Tables)")]
-        S3New[("Amazon S3 (Presigned Uploads & AES256)")]
+        DynamoNew[("Amazon DynamoDB - 4 Pay-Per-Request Tables")]
+        S3New[("Amazon S3 - Presigned Uploads & AES256")]
         CognitoNew["Amazon Cognito User Pool (JWT RBAC)"]
         BedrockNew["Amazon Bedrock (Claude 3 Haiku AI)"]
 

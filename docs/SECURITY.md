@@ -34,8 +34,8 @@ flowchart TD
     end
 
     subgraph DataSecurity["3. Encrypted AWS Serverless Storage"]
-        S3Presigned[("Amazon S3 Evidence Bucket<br/>(SSE-AES256 • Presigned URLs • Public Access Block)")]
-        DynamoKMS[("Amazon DynamoDB Tables<br/>(KMS Encryption at Rest • IAM Scoped Policies)")]
+        S3Presigned[("Amazon S3 Evidence Bucket - SSE-AES256 Presigned URLs Public Access Block")]
+        DynamoKMS[("Amazon DynamoDB Tables - KMS Encryption at Rest IAM Scoped Policies")]
     end
 
     Client --> TokenHeader

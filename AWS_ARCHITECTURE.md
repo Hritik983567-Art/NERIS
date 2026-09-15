@@ -17,8 +17,8 @@ flowchart TD
     Client["REACT FRONTEND CLIENT<br/>(Vite + Leaflet + Recharts + Vanilla CSS)"]
     Gateway["AMAZON API GATEWAY<br/>(CORS Enabled • REST / HTTP API)"]
     Lambda["AWS LAMBDA FUNCTION<br/>(Python 3.11 • Mangum ASGI • FastAPI)"]
-    DynamoDB[("AMAZON DYNAMODB<br/>(Table: ner_incidents)")]
-    S3[("AMAZON S3<br/>(Evidence Bucket)")]
+    DynamoDB[("AMAZON DYNAMODB<br/>- Table: ner_incidents")]
+    S3[("AMAZON S3<br/>- Evidence Bucket")]
     Cognito["AMAZON COGNITO<br/>(User Pool Authentication)"]
 
     Client -->|"HTTP / HTTPS REST API"| Gateway

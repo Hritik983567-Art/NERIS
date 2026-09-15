@@ -49,7 +49,7 @@ flowchart TD
     end
 
     subgraph AWS ["AWS Cloud Infrastructure (ap-south-1)"]
-        DDB[("Amazon DynamoDB (ner_incidents, ner_alerts, ner_fleet)")]
+        DDB[("Amazon DynamoDB - ner_incidents, ner_alerts, ner_fleet")]
         S3["Amazon S3 Bucket (neris-evidence-photos)"]
         Cognito["Amazon Cognito User Pool"]
         Bedrock["Amazon Bedrock (Claude 3 Haiku)"]

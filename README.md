@@ -60,7 +60,7 @@ flowchart TD
     Lambda["AWS Lambda FastAPI API Engine (Python 3.11 Runtime, Mangum Handler)"]
 
     subgraph AWS ["AWS Cloud Managed Services"]
-        DDB[("Amazon DynamoDB (ner_incidents, ner_alerts, ner_news, ner_fleet)")]
+        DDB[("Amazon DynamoDB - ner_incidents, ner_alerts, ner_news, ner_fleet")]
         S3["Amazon S3 Bucket (neris-evidence-photos)"]
         Cognito["Amazon Cognito User Pool (NerisCommandUserPool)"]
         Bedrock["Amazon Bedrock (Claude 3 Haiku)"]

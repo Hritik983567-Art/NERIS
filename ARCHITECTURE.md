@@ -29,7 +29,7 @@ flowchart TD
 
     subgraph AWS ["AWS Cloud Infrastructure Services"]
         Cognito["Amazon Cognito User Pool (JWT Auth)"]
-        DynamoDB[("Amazon DynamoDB (ner_incidents, ner_alerts, ner_fleet)")]
+        DynamoDB[("Amazon DynamoDB - ner_incidents, ner_alerts, ner_fleet")]
         S3["Amazon S3 Bucket (neris-evidence-photos)"]
         Bedrock["Amazon Bedrock (Claude 3 Haiku)"]
         CloudWatch["Amazon CloudWatch Logs"]
@@ -80,13 +80,13 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A["Command Center Dispatcher"] -->|Clicks 'AI Hazard Intelligence'| B["POST /api/v1/incidents/{id}/ai-intelligence"]
+    A["Command Center Dispatcher"] -->|"Clicks AI Hazard Intelligence"| B["POST /api/v1/incidents/{id}/ai-intelligence"]
     B --> C["AWS Lambda API Engine"]
-    C -->|Fetch Incident Details| D[("Amazon DynamoDB (ner_incidents)")]
-    C -->|Construct Grounded Prompt with XML Tags| E["Amazon Bedrock (Claude 3 Haiku)"]
-    E -->|Generate Structured Assessment JSON| F["JSON Schema Validator"]
-    F -->|Persist Result ('aiAnalysis')| D
-    F -->|200 OK Response| G["Render AI Intelligence Modal with Disclaimer Badge"]
+    C -->|"Fetch Incident Details"| D[("Amazon DynamoDB ner_incidents Table")]
+    C -->|"Construct Grounded Prompt with XML Tags"| E["Amazon Bedrock Claude 3 Haiku"]
+    E -->|"Generate Structured Assessment JSON"| F["JSON Schema Validator"]
+    F -->|"Persist Result to aiAnalysis Field"| D
+    F -->|"200 OK Response"| G["Render AI Intelligence Modal with Disclaimer Badge"]
 ```
 
 ---
