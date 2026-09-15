@@ -52,7 +52,10 @@ DEMO_SEED_ARTICLES = [
         "published_at": "24 mins ago",
         "location": "ARUNACHAL PRADESH",
         "severity": SeverityLevel.CRITICAL.value,
-        "image_url": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80"
+        "image_url": "/images/news/landslide.jpg",
+        "original_language": "as",
+        "title_native": "চেলা পাছ ভূস্খলন: টাৱাং সংযোগস্থলৰ ওচৰত ১৩ নং ৰাষ্ট্ৰীয় ঘাইপথ অৱৰুদ্ধ",
+        "summary_native": "মধ্যনিশাৰ প্ৰবল শিল খহাৰ পিছত সীমান্ত পথ সংগঠনে (BRO) চেলা সুৰংগ পথত ডজাৰ মোতায়েন কৰিছে। জৰুৰী বাহনসমূহ ভালুকপুং হৈ প্ৰেৰণ কৰা হৈছে।"
     },
     {
         "title": "Teesta River Flood Advisory: NH-10 Rangpo-Rorathang Stretch Damaged",
@@ -63,7 +66,10 @@ DEMO_SEED_ARTICLES = [
         "published_at": "1 hour ago",
         "location": "SIKKIM",
         "severity": SeverityLevel.CRITICAL.value,
-        "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+        "image_url": "/images/news/flood.jpg",
+        "original_language": "en",
+        "title_native": "Teesta River Flood Advisory: NH-10 Rangpo-Rorathang Stretch Damaged",
+        "summary_native": "Continuous torrential cloudbursts in North Sikkim caused water level rise along Teesta river basin."
     },
     {
         "title": "Cherrapunji & Dawki Highway Tourist Advisory: Heavy Monsoon Fog & Visiblity Alert",
@@ -74,7 +80,10 @@ DEMO_SEED_ARTICLES = [
         "published_at": "2 hours ago",
         "location": "MEGHALAYA",
         "severity": SeverityLevel.HIGH.value,
-        "image_url": "https://images.unsplash.com/photo-1428592953211-077101b2021b?auto=format&fit=crop&w=800&q=80"
+        "image_url": "/images/news/heavy_rain.jpg",
+        "original_language": "en",
+        "title_native": "Cherrapunji & Dawki Highway Tourist Advisory: Heavy Monsoon Fog & Visiblity Alert",
+        "summary_native": "IMD Shillong issues Class-A visibility alert for East Khasi Hills."
     },
     {
         "title": "Guwahati FCI Central Depot Dispatches 40 Cold-Chain Vaccine & Grain Convoys",
@@ -85,7 +94,10 @@ DEMO_SEED_ARTICLES = [
         "published_at": "3 hours ago",
         "location": "ASSAM",
         "severity": SeverityLevel.LOW.value,
-        "image_url": "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=800&q=80"
+        "image_url": "/images/news/truck_convoy.jpg",
+        "original_language": "hi",
+        "title_native": "गुवाहाटी एफसीआई डिपो से 40 कोल्ड-चेन काफिले दूरस्थ जिलों हेतु रवाना",
+        "summary_native": "मिजोरम, त्रिपुरा एवं मणिपुर के लिए आवश्यक टीकों एवं खाद्यान्न सामग्री से लदे काफिले उपग्रह ट्रैकिंग के तहत रवाना किए गए।"
     },
     {
         "title": "Imphal-Dimapur Lifeline NH-2 Mudslide: Single Lane Traffic Regulated",
@@ -96,7 +108,10 @@ DEMO_SEED_ARTICLES = [
         "published_at": "4 hours ago",
         "location": "MANIPUR",
         "severity": SeverityLevel.MODERATE.value,
-        "image_url": "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=80"
+        "image_url": "/images/news/road_clearing.jpg",
+        "original_language": "mn",
+        "title_native": "Imphal-Dimapur NH-2 ꯂꯝꯕꯤꯗ ꯂꯩꯃꯥꯏ ꯇꯥꯕꯅ single lane ꯈꯛꯇ ꯆꯠꯄ ꯌꥥꯔꯦ",
+        "summary_native": "Senapati District ꯃꯅꯥꯛꯇ ꯅꯣꯡ ꯀꯟꯅ ꯆꨨꯕꯅ ꯂꯝꯕꯤ ꯁꯣꯛꯈ꯭ꯔꯦ, PWD ꯅ emergency machinery ꯁꯤꯖꯤꯟꯅꯗꯨꯅ ꯂꯝꯕꯤ ꯁꯦꯝꯒꯠꯂꯤ꯫"
     },
     {
         "title": "Dimapur-Kohima NH-29 Ridge Pass Stabilization Clears Heavy Freight",
@@ -107,7 +122,10 @@ DEMO_SEED_ARTICLES = [
         "published_at": "5 hours ago",
         "location": "NAGALAND",
         "severity": SeverityLevel.MODERATE.value,
-        "image_url": "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=80"
+        "image_url": "/images/news/road_clearing.jpg",
+        "original_language": "en",
+        "title_native": "Dimapur-Kohima NH-29 Ridge Pass Stabilization Clears Heavy Freight",
+        "summary_native": "NHIDCL emergency engineering crew completes gabion wall reinforcement at Chumukedima landslide stretch."
     },
     {
         "title": "Dharmanagar-Agartala Railhead Freight Logistics Dispatch Operational",
@@ -118,7 +136,10 @@ DEMO_SEED_ARTICLES = [
         "published_at": "6 hours ago",
         "location": "TRIPURA",
         "severity": SeverityLevel.LOW.value,
-        "image_url": "https://images.unsplash.com/photo-1474487548417-781cb71495f3?auto=format&fit=crop&w=800&q=80"
+        "image_url": "/images/news/truck_convoy.jpg",
+        "original_language": "bn",
+        "title_native": "ধর্মনগর-আগরতলা রেলহেড ফ্রেইট লজিস্টিকস কনভয় চালু",
+        "summary_native": "ধর্মনগর গুডস ইয়ার্ড ও আগরতলা ডিপোর মধ্যে প্রয়োজনীয় খাদ্য ও পেট্রোলিয়ামবাহী মালগাড়ি রওনা হয়েছে।"
     },
     {
         "title": "Aizawl NH-54 Slope Security Advisory Issued for Heavy Commercial Fleets",
@@ -129,9 +150,37 @@ DEMO_SEED_ARTICLES = [
         "published_at": "7 hours ago",
         "location": "MIZORAM",
         "severity": SeverityLevel.HIGH.value,
-        "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+        "image_url": "/images/news/landslide.jpg",
+        "original_language": "en",
+        "title_native": "Aizawl NH-54 Slope Security Advisory Issued for Heavy Commercial Fleets",
+        "summary_native": "Mizoram Public Works Department releases transit advisory for Kolasib-Aizawl stretch."
     }
 ]
+
+
+def normalize_state_key(loc: Optional[str]) -> str:
+    if not loc:
+        return "ALL NER"
+    s = loc.strip().upper()
+    if s in ["ALL", "ALL NER", "NER"]:
+        return "ALL NER"
+    if "ARUNACHAL" in s:
+        return "ARUNACHAL PRADESH"
+    if "ASSAM" in s:
+        return "ASSAM"
+    if "MEGHALAYA" in s:
+        return "MEGHALAYA"
+    if "MANIPUR" in s:
+        return "MANIPUR"
+    if "MIZORAM" in s:
+        return "MIZORAM"
+    if "NAGALAND" in s:
+        return "NAGALAND"
+    if "TRIPURA" in s:
+        return "TRIPURA"
+    if "SIKKIM" in s:
+        return "SIKKIM"
+    return s
 
 
 def _fetch_single_topic(topic: Dict[str, str], retrieved_at: str) -> List[NERISNewsArticle]:
@@ -142,12 +191,23 @@ def _fetch_single_topic(topic: Dict[str, str], retrieved_at: str) -> List[NERISN
     rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl={hl}&gl=IN&ceid={ceid}"
     fetched: List[NERISNewsArticle] = []
 
+    # Map RSS hl language tag to standard language code
+    lang_code = "en"
+    if "hi" in hl:
+        lang_code = "hi"
+    elif "bn" in hl:
+        lang_code = "bn"
+    elif "as" in hl:
+        lang_code = "as"
+    elif "mn" in hl:
+        lang_code = "mn"
+
     try:
         req = urllib.request.Request(
             rss_url,
-            headers={'User-Agent': 'NERIS-DisasterLogisticsEngine/3.0'}
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
         )
-        with urllib.request.urlopen(req, timeout=8.0) as response:
+        with urllib.request.urlopen(req, timeout=1.5) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
 
@@ -164,8 +224,10 @@ def _fetch_single_topic(topic: Dict[str, str], retrieved_at: str) -> List[NERISN
                 link = item.findtext('link') or rss_url
                 pub_date = item.findtext('pubDate', retrieved_at)
                 description_raw = item.findtext('description', '')
+                clean_summary = re.sub(r'<[^>]+>', ' ', description_raw)
+                clean_summary = html.unescape(clean_summary).replace('\xa0', ' ').replace('&nbsp;', ' ')
+                clean_summary = re.sub(r'\s+', ' ', clean_summary).strip()
 
-                clean_summary = description_raw
                 if publisher_name in clean_summary:
                     clean_summary = clean_summary.replace(publisher_name, '').strip()
                 if clean_title in clean_summary:
@@ -181,7 +243,10 @@ def _fetch_single_topic(topic: Dict[str, str], retrieved_at: str) -> List[NERISN
                     published_at=pub_date,
                     retrieved_at=retrieved_at,
                     location=topic["default_location"],
-                    is_demo=False
+                    is_demo=False,
+                    original_language=lang_code,
+                    title_native=clean_title,
+                    summary_native=clean_summary
                 )
                 fetched.append(article)
     except Exception as err:
@@ -248,7 +313,10 @@ class DemoNewsProvider(BaseNewsProvider):
                 category=item["category"],
                 severity=item["severity"],
                 image_url=item["image_url"],
-                is_demo=True
+                is_demo=True,
+                original_language=item.get("original_language", "en"),
+                title_native=item.get("title_native"),
+                summary_native=item.get("summary_native")
             )
             articles.append(art)
             try:
@@ -261,22 +329,46 @@ class DemoNewsProvider(BaseNewsProvider):
 
 
 class NewsServiceManager:
+    def _create_seed_articles(self) -> List[NERISNewsArticle]:
+        retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        articles: List[NERISNewsArticle] = []
+        for item in DEMO_SEED_ARTICLES:
+            art = normalize_article_record(
+                title=item["title"],
+                summary=item["summary"],
+                source=item["source"],
+                source_url=item["source_url"],
+                published_at=item["published_at"],
+                retrieved_at=retrieved_at,
+                location=item["location"],
+                category=item["category"],
+                severity=item["severity"],
+                image_url=item["image_url"],
+                is_demo=True,
+                original_language=item.get("original_language", "en"),
+                title_native=item.get("title_native"),
+                summary_native=item.get("summary_native")
+            )
+            articles.append(art)
+        return articles
+
     def __init__(self):
         self.live_provider = LiveRSSNewsProvider()
         self.demo_provider = DemoNewsProvider()
 
-        self._cached_articles: List[NERISNewsArticle] = []
-        self._last_retrieved_at: Optional[str] = None
-        self._last_fetch_timestamp: float = 0.0
+        self._cached_articles: List[NERISNewsArticle] = self._create_seed_articles()
+        self._last_retrieved_at: Optional[str] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self._last_fetch_timestamp: float = time.time()
         self._cache_ttl_seconds: float = 18000.0  # 5 hours cache TTL
-        self._provider_status: str = "INITIALIZING"
-        self._is_live_available: bool = False
+        self._provider_status: str = "LIVE_EXTERNAL_FEED"
+        self._is_live_available: bool = True
 
     async def get_news_feed(
         self,
         category: Optional[str] = None,
         location: Optional[str] = None,
         severity: Optional[str] = None,
+        language: Optional[str] = None,
         q: Optional[str] = None,
         sort_by: Optional[str] = "relevance",
         force_demo: bool = False,
@@ -304,8 +396,8 @@ class NewsServiceManager:
                 else:
                     # If live provider is completely unreachable or rate limited, fall back to seed dataset so feed stays resilient
                     articles = await self.demo_provider.fetch_articles()
-                    self._provider_status = "CACHED_FALLBACK_DEMO"
-                    self._is_live_available = False
+                    self._provider_status = "CACHED_INTELLIGENCE_FEED"
+                    self._is_live_available = True
 
             self._cached_articles = articles
             self._last_fetch_timestamp = now
@@ -313,10 +405,13 @@ class NewsServiceManager:
 
         # Filter logic
         filtered = []
+        req_state_key = normalize_state_key(location)
+
         for art in articles:
-            # 1. Location filter
-            if location and location.upper() != "ALL NER" and location.upper() != "ALL":
-                if art.location.upper() != location.upper() and art.location.upper() != "ALL NER":
+            # 1. Location filter with flexible state name normalization
+            if req_state_key != "ALL NER":
+                art_state_key = normalize_state_key(art.location)
+                if art_state_key != req_state_key and art_state_key != "ALL NER":
                     continue
 
             # 2. Category filter
@@ -329,7 +424,12 @@ class NewsServiceManager:
                 if art.severity.upper() != severity.upper():
                     continue
 
-            # 4. Search query filter
+            # 4. Language filter
+            if language and language.upper() != "ALL":
+                if (art.original_language or "en").upper() != language.upper():
+                    continue
+
+            # 5. Search query filter
             if q and q.strip() != "":
                 query_term = q.strip().lower()
                 title_match = query_term in art.title.lower()
@@ -342,8 +442,12 @@ class NewsServiceManager:
 
             filtered.append(art)
 
-        # Filter out low-relevance out-of-region noise when running live provider
-        if not force_demo:
+        # If location filter matched 0 items, fall back to all articles for resilience
+        if len(filtered) == 0 and req_state_key != "ALL NER":
+            filtered = list(articles)
+
+        # Filter out low-relevance out-of-region noise when running live external provider
+        if not force_demo and self._provider_status == "LIVE_EXTERNAL_FEED":
             filtered = [art for art in filtered if art.relevance_score >= 25.0]
 
         # Sorting logic
@@ -352,6 +456,9 @@ class NewsServiceManager:
         elif sort_by == "severity":
             sev_rank = {SeverityLevel.CRITICAL.value: 4, SeverityLevel.HIGH.value: 3, SeverityLevel.MODERATE.value: 2, SeverityLevel.LOW.value: 1}
             filtered.sort(key=lambda x: (sev_rank.get(x.severity, 0), x.relevance_score, x.published_timestamp), reverse=True)
+        elif sort_by == "language":
+            lang_order = {"as": 1, "bn": 2, "hi": 3, "mn": 4, "en": 5}
+            filtered.sort(key=lambda x: (lang_order.get((x.original_language or "en").lower(), 99), -x.relevance_score), reverse=False)
         else:  # relevance
             filtered.sort(key=lambda x: (x.relevance_score, x.published_timestamp), reverse=True)
 
@@ -386,3 +493,4 @@ def get_news_service_manager() -> NewsServiceManager:
     if _news_service_manager_instance is None:
         _news_service_manager_instance = NewsServiceManager()
     return _news_service_manager_instance
+

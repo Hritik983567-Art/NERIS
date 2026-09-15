@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Header, status, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Header, status, Depends, Query
 from app.services.incidents_service import get_incidents_service
 from app.core.dependencies import require_roles, get_current_user
 
@@ -9,12 +9,33 @@ router = APIRouter(tags=["AWS DynamoDB & S3 Incidents API"])
 @router.get("/api/incidents", status_code=status.HTTP_200_OK)
 @router.get("/api/v1/incidents", status_code=status.HTTP_200_OK)
 @router.get("/api/v1/incidents/live", status_code=status.HTTP_200_OK)
-async def get_all_incidents():
+async def get_all_incidents(
+    include_historical: bool = Query(False, description="Whether to append historical dataset events tagged with source_type = 'historical_dataset'")
+):
     """
     Retrieves all field incidents directly from AWS DynamoDB ('ner_incidents' table).
+    Live reported incidents are strictly tagged with source_type = 'live_verified_incident'.
     """
     service = get_incidents_service()
     incidents = service.get_live_incidents()
+
+    # Tag live incidents
+    if isinstance(incidents, list):
+        for inc in incidents:
+            if isinstance(inc, dict):
+                inc["source_type"] = "live_verified_incident"
+                inc["disclaimer"] = "LIVE VERIFIED INCIDENT"
+
+    if include_historical:
+        try:
+            from app.services.landslide_flood_service import get_landslide_flood_service
+            lf_service = get_landslide_flood_service()
+            historical_events = lf_service.get_historical_records()
+            if isinstance(incidents, list):
+                incidents.extend(historical_events)
+        except Exception as ex:
+            pass
+
     return incidents
 
 @router.post("/incidents", status_code=status.HTTP_201_CREATED)

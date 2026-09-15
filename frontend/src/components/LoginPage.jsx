@@ -317,7 +317,7 @@ export const LoginPage = () => {
               {/* Quick Preset Sign-In Buttons */}
               <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase' }}>
-                  {t.quickFillTitle} [DEVELOPMENT ONLY]
+                  {t.quickFillTitle}
                 </span>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
                   <button
@@ -360,7 +360,7 @@ export const LoginPage = () => {
                 </div>
                 <div className="pill clear" style={{ fontSize: '0.64rem', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                   <ShieldCheck size={12} color="#10B981" />
-                  <span>Cognito Auth</span>
+                  <span>Encrypted Auth</span>
                 </div>
               </div>
 
@@ -471,7 +471,7 @@ export const LoginPage = () => {
               {/* Quick Officer Demo Preset Buttons */}
               <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase' }}>
-                  {t.quickFillTitle} [DEVELOPMENT ONLY]
+                  {t.quickFillTitle}
                 </span>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
                   <button

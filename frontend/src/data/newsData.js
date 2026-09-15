@@ -29,7 +29,7 @@ export const regionalNewsArticles = [
     timestamp: "18 mins ago",
     readTime: "2 min read",
     urgency: "critical",
-    image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80",
+    image: "/images/news/landslide.jpg",
     corridorId: "corridor-tawang"
   },
   {
@@ -62,7 +62,7 @@ export const regionalNewsArticles = [
     timestamp: "42 mins ago",
     readTime: "3 min read",
     urgency: "warning",
-    image: "https://images.unsplash.com/photo-1428592953211-077101b2021b?auto=format&fit=crop&w=800&q=80",
+    image: "/images/news/heavy_rain.jpg",
     corridorId: "corridor-shillong"
   },
   {
@@ -95,7 +95,7 @@ export const regionalNewsArticles = [
     timestamp: "1 hour ago",
     readTime: "4 min read",
     urgency: "info",
-    image: "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=800&q=80",
+    image: "/images/news/truck_convoy.jpg",
     corridorId: "corridor-silchar"
   },
   {
@@ -128,7 +128,7 @@ export const regionalNewsArticles = [
     timestamp: "2 hours ago",
     readTime: "3 min read",
     urgency: "critical",
-    image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+    image: "/images/news/flood.jpg",
     corridorId: "corridor-sikkim"
   },
   {
@@ -161,7 +161,7 @@ export const regionalNewsArticles = [
     timestamp: "3 hours ago",
     readTime: "2 min read",
     urgency: "warning",
-    image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=80",
+    image: "/images/news/road_clearing.jpg",
     corridorId: "corridor-imphal"
   },
   {
@@ -194,7 +194,7 @@ export const regionalNewsArticles = [
     timestamp: "4 hours ago",
     readTime: "3 min read",
     urgency: "info",
-    image: "https://images.unsplash.com/photo-1534567153574-2b12153a87f0?auto=format&fit=crop&w=800&q=80",
+    image: "/images/news/heavy_rain.jpg",
     corridorId: "corridor-kaziranga"
   },
   {
@@ -227,7 +227,7 @@ export const regionalNewsArticles = [
     timestamp: "5 hours ago",
     readTime: "2 min read",
     urgency: "info",
-    image: "https://images.unsplash.com/photo-1474487548417-781cb71495f3?auto=format&fit=crop&w=800&q=80",
+    image: "/images/news/truck_convoy.jpg",
     corridorId: "corridor-agartala"
   },
   {
@@ -260,7 +260,7 @@ export const regionalNewsArticles = [
     timestamp: "6 hours ago",
     readTime: "3 min read",
     urgency: "info",
-    image: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=80",
+    image: "/images/news/road_clearing.jpg",
     corridorId: "corridor-kohima"
   }
 ];

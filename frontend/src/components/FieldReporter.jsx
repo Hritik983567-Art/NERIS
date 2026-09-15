@@ -11,7 +11,8 @@ import {
   FileText,
   UploadCloud,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  Trash2
 } from 'lucide-react';
 
 export const FieldReporter = () => {
@@ -21,6 +22,7 @@ export const FieldReporter = () => {
     addIncidentReport,
     offlineQueue,
     syncOfflineQueue,
+    removeOfflineQueueItem,
     nerStates
   } = useApp();
 
@@ -188,12 +190,12 @@ export const FieldReporter = () => {
               <div style={{ fontSize: '0.75rem', display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '4px' }}>
                   <Database size={12} />
-                  DynamoDB Status: <strong>{submitFeedback.dynamodb_confirmed ? 'SYNCED' : 'PENDING'}</strong>
+                  Cloud Sync Status: <strong>{submitFeedback.dynamodb_confirmed ? 'SYNCED' : 'PENDING'}</strong>
                 </span>
 
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '4px' }}>
                   <UploadCloud size={12} />
-                  Amazon S3 Evidence: <strong>{submitFeedback.s3_confirmed ? 'UPLOADED' : (photoFile ? 'PENDING' : 'NO EVIDENCE')}</strong>
+                  Evidence Media: <strong>{submitFeedback.s3_confirmed ? 'UPLOADED' : (photoFile ? 'PENDING' : 'NO EVIDENCE')}</strong>
                 </span>
               </div>
             )}
@@ -366,7 +368,7 @@ export const FieldReporter = () => {
 
               {photoFile && (
                 <span style={{ fontSize: '0.72rem', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <ShieldCheck size={14} /> Ready for S3 Upload ({(photoFile.size / (1024 * 1024)).toFixed(2)} MB)
+                  <ShieldCheck size={14} /> Ready for Upload ({(photoFile.size / (1024 * 1024)).toFixed(2)} MB)
                 </span>
               )}
             </div>
@@ -386,7 +388,7 @@ export const FieldReporter = () => {
           >
             {isSubmitting ? <RefreshCw className="animate-spin" size={16} /> : <FileText size={16} />}
             {isSubmitting
-              ? "Uploading Evidence & Saving to DynamoDB..."
+              ? "Uploading Evidence & Saving Report..."
               : isOnline
               ? (t.submitReportBtn || "Submit Live Geo-Tagged Report")
               : (t.saveOfflineBtn || "Save to Offline Queue (No Network)")}
@@ -400,7 +402,7 @@ export const FieldReporter = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexShrink: 0 }}>
             <h3 className="section-title" style={{ fontSize: '0.92rem' }}>
               <Database size={16} color="#F59E0B" />
-              IndexedDB Queue
+              Offline Incident Queue
             </h3>
             <span className="pill caution">
               {offlineQueue.filter(i => i.status !== 'SYNCED').length} Pending
@@ -408,11 +410,11 @@ export const FieldReporter = () => {
           </div>
 
           <p style={{ fontSize: '0.74rem', color: 'var(--color-muted)', marginBottom: '12px', flexShrink: 0 }}>
-            IndexedDB persistent queue for offline zero-connectivity zones. Retries with exponential backoff & idempotent DynamoDB processing.
+            Local persistent queue for offline zero-connectivity zones. Automatically synchronizes when network connection is restored.
           </p>
 
           <button
-            onClick={syncOfflineQueue}
+            onClick={() => syncOfflineQueue(true)}
             disabled={offlineQueue.filter(i => i.status !== 'SYNCED').length === 0 || !isOnline}
             className="btn-primary"
             style={{
@@ -424,7 +426,7 @@ export const FieldReporter = () => {
             }}
           >
             <RefreshCw size={15} />
-            {t.syncNow || "Sync IndexedDB Queue"}
+            {t.syncNow || "Force Sync Now"}
           </button>
 
           <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
@@ -455,27 +457,48 @@ export const FieldReporter = () => {
                         {payload.title || item.title}
                       </div>
 
-                      {/* Status Badge */}
-                      <span
-                        style={{
-                          fontSize: '0.65rem',
-                          fontWeight: 800,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: isSynced
-                            ? 'rgba(16, 185, 129, 0.15)'
-                            : isSyncing
-                            ? 'rgba(59, 130, 246, 0.15)'
-                            : isFailed
-                            ? 'rgba(239, 68, 68, 0.15)'
-                            : 'rgba(245, 158, 11, 0.15)',
-                          color: isSynced ? '#10B981' : isSyncing ? '#3B82F6' : isFailed ? '#EF4444' : '#D97706',
-                          border: `1px solid ${isSynced ? '#10B981' : isSyncing ? '#3B82F6' : isFailed ? '#EF4444' : '#F59E0B'}`,
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {statusStr}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {/* Status Badge */}
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 800,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: isSynced
+                              ? 'rgba(16, 185, 129, 0.15)'
+                              : isSyncing
+                              ? 'rgba(59, 130, 246, 0.15)'
+                              : isFailed
+                              ? 'rgba(239, 68, 68, 0.15)'
+                              : 'rgba(245, 158, 11, 0.15)',
+                            color: isSynced ? '#10B981' : isSyncing ? '#3B82F6' : isFailed ? '#EF4444' : '#D97706',
+                            border: `1px solid ${isSynced ? '#10B981' : isSyncing ? '#3B82F6' : isFailed ? '#EF4444' : '#F59E0B'}`,
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {statusStr}
+                        </span>
+
+                        <button
+                          onClick={() => removeOfflineQueueItem(item.localQueueId)}
+                          title="Remove from offline queue"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#94A3B8',
+                            cursor: 'pointer',
+                            padding: '2px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            borderRadius: '4px'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#EF4444'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
 
                     <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>
@@ -497,7 +520,7 @@ export const FieldReporter = () => {
               })
             ) : (
               <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.76rem', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                No pending offline reports in IndexedDB.
+                No pending offline reports.
               </div>
             )}
           </div>

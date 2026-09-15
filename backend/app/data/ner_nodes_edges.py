@@ -25,7 +25,8 @@ def build_ner_transportation_graph() -> nx.Graph:
         "Imphal": {"lat": 24.8170, "lng": 93.9368, "elevation_m": 786, "state": "Manipur", "type": "STATE_CAPITAL", "district": "Imphal East"},
         "Jiribam": {"lat": 24.8016, "lng": 93.1189, "elevation_m": 42, "state": "Manipur", "type": "GATEWAY_CHECKPOINT", "district": "Jiribam"},
         "Itanagar": {"lat": 27.0844, "lng": 93.6053, "elevation_m": 320, "state": "Arunachal Pradesh", "type": "STATE_CAPITAL", "district": "Papum Pare"},
-        "Tezpur": {"lat": 26.6338, "lng": 92.8006, "elevation_m": 48, "state": "Assam", "type": "BRAHMAPUTRA_BRIDGE_HUB", "district": "Sonitpur"}
+        "Tezpur": {"lat": 26.6338, "lng": 92.8006, "elevation_m": 48, "state": "Assam", "type": "BRAHMAPUTRA_BRIDGE_HUB", "district": "Sonitpur"},
+        "Kaziranga": {"lat": 26.5775, "lng": 93.1711, "elevation_m": 67, "state": "Assam", "type": "NATIONAL_PARK_HIGHWAY_CORRIDOR", "district": "Golaghat"}
     }
 
     for node_id, data in nodes_data.items():
@@ -47,7 +48,10 @@ def build_ner_transportation_graph() -> nx.Graph:
         ("Dimapur", "Kohima", {"length_km": 74.0, "highway_name": "NH-29", "elevation_profile": "STEEP_GHAT", "vulnerability_index": 0.82, "max_weight_tons": 25.0, "base_speed_kmh": 35.0}),
         ("Kohima", "Imphal", {"length_km": 138.0, "highway_name": "NH-02", "elevation_profile": "EXTREME_SLOPE", "vulnerability_index": 0.85, "max_weight_tons": 24.0, "base_speed_kmh": 32.0}),
         ("Silchar", "Jiribam", {"length_km": 50.0, "highway_name": "NH-37", "elevation_profile": "MODERATE_HILL", "vulnerability_index": 0.50, "max_weight_tons": 28.0, "base_speed_kmh": 40.0}),
-        ("Jiribam", "Imphal", {"length_km": 222.0, "highway_name": "NH-37", "elevation_profile": "EXTREME_SLOPE", "vulnerability_index": 0.78, "max_weight_tons": 22.0, "base_speed_kmh": 30.0})
+        ("Jiribam", "Imphal", {"length_km": 222.0, "highway_name": "NH-37", "elevation_profile": "EXTREME_SLOPE", "vulnerability_index": 0.78, "max_weight_tons": 22.0, "base_speed_kmh": 30.0}),
+        ("Tezpur", "Kaziranga", {"length_km": 65.0, "highway_name": "NH-715", "elevation_profile": "PLAINS", "vulnerability_index": 0.35, "max_weight_tons": 40.0, "base_speed_kmh": 55.0}),
+        ("Guwahati", "Kaziranga", {"length_km": 195.0, "highway_name": "NH-27", "elevation_profile": "PLAINS", "vulnerability_index": 0.25, "max_weight_tons": 45.0, "base_speed_kmh": 60.0}),
+        ("Kaziranga", "Dimapur", {"length_km": 140.0, "highway_name": "NH-29", "elevation_profile": "PLAINS", "vulnerability_index": 0.30, "max_weight_tons": 40.0, "base_speed_kmh": 50.0})
     ]
 
     for u, v, attrs in edges_data:

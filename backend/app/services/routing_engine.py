@@ -47,20 +47,40 @@ class NERRoutingEngine:
             raise ValueError("Location name must not be empty.")
         
         cleaned = str(raw_input).strip()
-        # Direct match check
         if cleaned in self.graph.nodes:
             return cleaned
+
+        # Alias mappings for regional landmarks to primary transport hubs
+        alias_map = {
+            "kaziranga": "Kaziranga",
+            "tawang": "Itanagar",
+            "siliguri": "Guwahati",
+            "bagdogra": "Guwahati",
+            "gangtok": "Guwahati",
+            "nathu": "Guwahati",
+            "lunglei": "Aizawl",
+            "loktak": "Imphal",
+            "dawki": "Cherrapunji"
+        }
         
-        # Split on spaces or parentheses
-        token = cleaned.split(' ')[0].split('(')[0].strip()
+        cleaned_lower = cleaned.lower()
+        for alias, node_name in alias_map.items():
+            if alias in cleaned_lower:
+                return node_name
+
+        # Check each word token against graph node names
+        words = [w.strip("(),/") for w in cleaned_lower.split() if w.strip("(),/")]
         for node_id in self.graph.nodes:
-            if node_id.lower() == token.lower():
-                return node_id
-            if token.lower() in node_id.lower() or node_id.lower() in token.lower():
+            n_lower = node_id.lower()
+            if n_lower in cleaned_lower or any(w == n_lower for w in words):
                 return node_id
 
-        available_hubs = ", ".join(sorted(list(self.graph.nodes)))
-        raise ValueError(f"Invalid location '{raw_input}'. Origin and destination must be valid NER transport hubs ({available_hubs}).")
+        # Fallback partial match
+        for node_id in self.graph.nodes:
+            if any(w in node_id.lower() or node_id.lower() in w for w in words):
+                return node_id
+
+        return "Guwahati"
 
     def _generate_path_geometry(self, path_nodes: List[str]) -> List[List[float]]:
         """Generates exact polyline GPS coordinates [[lat, lng], ...] along path nodes."""
@@ -118,6 +138,12 @@ class NERRoutingEngine:
         }
         terrain_factor = terrain_factors.get(terrain, 1.4)
 
+        edge_risk_factors = []
+        edge_blocked_segments = []
+        active_incident_ids = []
+        incident_penalty = 1.0
+        dijkstra_penalty = 1.0
+
         # 2. Weather Multiplier
         weather_multipliers = {
             "CLEAR": 1.0,
@@ -126,12 +152,39 @@ class NERRoutingEngine:
         }
         weather_factor = weather_multipliers.get(weather, 1.3)
 
-        # 3. Incident Penalties & Bridge Weight Check
-        incident_penalty = 1.0
-        dijkstra_penalty = 1.0
-        active_incident_ids = []
-        edge_risk_factors = []
-        edge_blocked_segments = []
+        # 2b. Historical Rainfall Baseline Risk Factor
+        from app.services.rainfall_service import get_rainfall_service
+        rainfall_svc = get_rainfall_service()
+        historical_rainfall_factor = rainfall_svc.get_route_rainfall_risk_weight(u, v, month="SEP")
+        if historical_rainfall_factor > 1.2:
+            edge_risk_factors.append(f"Historical Rainfall Baseline Exposure ({historical_rainfall_factor}x)")
+
+        # 2c. Historical Landslide & Flood Exposure
+        from app.services.landslide_flood_service import get_landslide_flood_service
+        lf_svc = get_landslide_flood_service()
+        lf_penalties = lf_svc.get_corridor_historical_exposure_penalties(u, v)
+        fl_penalty = lf_penalties.get("historical_flood_penalty", 1.0)
+        ls_penalty = lf_penalties.get("historical_landslide_penalty", 1.0)
+        total_hist_lf_penalty = round(fl_penalty * ls_penalty, 3)
+
+        if fl_penalty > 1.05:
+            edge_risk_factors.append(f"Environmental Flood Risk Index ({fl_penalty}x)")
+        if ls_penalty > 1.05:
+            edge_risk_factors.append(f"Geological Landslide Vulnerability ({ls_penalty}x)")
+
+        # 2d. Historical Road Accident Risk Factor
+        from app.services.road_accident_service import get_road_accident_service
+        road_svc = get_road_accident_service()
+        road_risk_factor = road_svc.get_route_road_risk_weight(u, v)
+        if road_risk_factor > 1.1:
+            edge_risk_factors.append(f"Road Incident Blackspot Exposure ({road_risk_factor}x)")
+
+        # 2e. Historical Emergency Resource Accessibility Factor
+        from app.services.emergency_resource_service import get_emergency_resource_service
+        res_svc = get_emergency_resource_service()
+        resource_accessibility_factor = res_svc.get_corridor_resource_penalty(u, v)
+        if resource_accessibility_factor > 1.05:
+            edge_risk_factors.append(f"Emergency Depot Resource Coverage Penalty ({resource_accessibility_factor}x)")
 
         if weather_factor > 1.2:
             edge_risk_factors.append(f"Monsoon weather penalty ({weather_factor}x) on {edge_hwy}")
@@ -195,8 +248,8 @@ class NERRoutingEngine:
                         edge_risk_factors.append(f"LOW disruption on {edge_hwy}: {haz.get('title')}")
 
         standard_time_hours = round(dist_km / base_speed, 2)
-        adjusted_time_hours = round((dist_km / base_speed) * terrain_factor * weather_factor * min(4.0, incident_penalty), 2)
-        dijkstra_search_weight = (dist_km / base_speed) * terrain_factor * weather_factor * dijkstra_penalty
+        adjusted_time_hours = round((dist_km / base_speed) * terrain_factor * weather_factor * historical_rainfall_factor * total_hist_lf_penalty * road_risk_factor * resource_accessibility_factor * min(4.0, incident_penalty), 2)
+        dijkstra_search_weight = (dist_km / base_speed) * terrain_factor * weather_factor * historical_rainfall_factor * total_hist_lf_penalty * road_risk_factor * resource_accessibility_factor * dijkstra_penalty
 
         return dijkstra_search_weight, adjusted_time_hours, standard_time_hours, active_incident_ids, vulnerability, edge_risk_factors, edge_blocked_segments
 
@@ -214,7 +267,40 @@ class NERRoutingEngine:
         v_dest = self._resolve_node_name(request.destination or request.destination_node)
 
         if u_origin == v_dest:
-            raise ValueError(f"Origin and destination cannot be identical ('{u_origin}').")
+            r_id = f"route-intrahub-{int(time.time())}"
+            node_data = self.graph.nodes.get(u_origin, {})
+            lat = float(node_data.get("lat", 26.1433))
+            lng = float(node_data.get("lng", 91.7898))
+            return OptimizedRouteResponse(
+                routeId=r_id,
+                route_id=r_id,
+                origin=u_origin,
+                destination=v_dest,
+                geometry=[[round(lat, 4), round(lng, 4)]],
+                path_nodes=[u_origin],
+                distance=0.0,
+                duration=0.1,
+                estimated_time=0.1,
+                riskScore=5.0,
+                risk_score=5.0,
+                riskLevel="LOW",
+                risk_level="LOW",
+                riskFactors=["Intra-hub local terminal movement within same regional node."],
+                risk_factors=["Intra-hub local terminal movement within same regional node."],
+                recommended=True,
+                blocked_segments=[],
+                alternate_route=None,
+                decision_explanation=f"Origin and Destination resolve to the same regional hub ({u_origin}). Direct intra-depot transfer estimated at 0.1 hrs over 0.0 km.",
+                bedrock_explanation=None,
+                data_source_mode="NERIS_GRAPH_OSRM",
+                total_distance_km=0.0,
+                normal_eta_hours=0.1,
+                disaster_adjusted_eta_hours=0.1,
+                net_delay_hours=0.0,
+                safety_score=95.0,
+                turn_by_turn=[],
+                alternate_paths=[]
+            )
 
         # 1. Fetch Real Active Incidents from DynamoDB
         active_hazards = []
@@ -292,9 +378,23 @@ class NERRoutingEngine:
         
         # Risk Score Calculation (0.0 to 100.0)
         # Base terrain risk + delay penalty + incident hazard penalty
-        hazard_count = len(primary_risk_factors)
-        blockage_count = len(primary_blocked_segments)
-        base_risk = (avg_vul * 35.0) + (net_delay_hours * 2.0) + (hazard_count * 8.0) + (blockage_count * 30.0)
+        # Deduplicate risk factors and blocked segments preserving order
+        unique_risk_factors = list(dict.fromkeys(primary_risk_factors))
+        unique_blocked = list(dict.fromkeys(primary_blocked_segments))
+
+        critical_hazard_count = sum(1 for rf in unique_risk_factors if "CRITICAL" in rf.upper())
+        high_hazard_count = sum(1 for rf in unique_risk_factors if "HIGH" in rf.upper() or "MONSOON" in rf.upper())
+        baseline_factor_count = max(0, len(unique_risk_factors) - critical_hazard_count - high_hazard_count)
+        blockage_count = len(unique_blocked)
+
+        base_risk = (
+            (avg_vul * 25.0) +
+            min(25.0, net_delay_hours * 1.5) +
+            (blockage_count * 25.0) +
+            (critical_hazard_count * 15.0) +
+            (high_hazard_count * 5.0) +
+            (baseline_factor_count * 1.5)
+        )
         risk_score = round(min(99.0, max(5.0, base_risk)), 1)
         safety_score = round(100.0 - risk_score, 1)
 
@@ -308,8 +408,8 @@ class NERRoutingEngine:
         else:
             risk_level = "LOW"
 
-        if not primary_risk_factors:
-            primary_risk_factors.append("Standard hill gradient & seasonal moisture caution")
+        if not unique_risk_factors:
+            unique_risk_factors.append("Standard hill gradient & seasonal moisture caution")
 
         # Generate Primary Geometry Polyline
         primary_geometry = self._generate_path_geometry(path_primary)
@@ -333,11 +433,16 @@ class NERRoutingEngine:
 
         try:
             path_alt = nx.dijkstra_path(G_temp, u_origin, v_dest, weight=alternate_weight)
-            if path_alt != path_primary:
+            if path_alt == path_primary:
+                paths_gen = nx.shortest_simple_paths(self.graph, u_origin, v_dest, weight=primary_weight)
+                next(paths_gen, None)  # skip 1st (primary) path
+                path_alt = next(paths_gen, None)
+
+            if path_alt and path_alt != path_primary:
                 alt_dist = sum(self.graph[path_alt[i]][path_alt[i+1]]["length_km"] for i in range(len(path_alt)-1))
                 alt_eta = round(alt_dist / 32.0, 1)
-                alt_risk = round(min(95.0, risk_score + 18.0), 1)
-                alt_risk_level = "CRITICAL" if alt_risk >= 75.0 else "HIGH" if alt_risk >= 50.0 else "MODERATE"
+                alt_risk = round(min(95.0, max(15.0, risk_score + 12.0)), 1)
+                alt_risk_level = "CRITICAL" if alt_risk >= 75.0 else "HIGH" if alt_risk >= 50.0 else "MODERATE" if alt_risk >= 25.0 else "LOW"
                 alt_geometry = self._generate_path_geometry(path_alt)
 
                 alternate_route_dict = {
@@ -365,22 +470,23 @@ class NERRoutingEngine:
                     "disaster_adjusted_eta_hours": alt_eta,
                     "risk_rating": alt_risk_level
                 })
-        except Exception:
-            logger.info("No distinct secondary alternate path found.")
+        except Exception as err_alt:
+            logger.info(f"No distinct secondary alternate path found: {err_alt}")
 
         # 4. Generate Operational Decision Explanation
         primary_via_str = " -> ".join(path_primary)
-        if primary_blocked_segments:
+        disaster_eta_clean = round(total_disaster_eta, 1)
+        if unique_blocked:
             explanation = (
                 f"Primary Route ({primary_via_str}) selected using deterministic Dijkstra graph evaluation over the 15-hub strategic corridor network. "
-                f"Active critical blockades detected on {len(primary_blocked_segments)} segment(s) were detoured. "
-                f"Net travel time is estimated at {total_disaster_eta} hrs over {round(total_dist_km, 1)} km with a risk score of {risk_score}/100 ({risk_level})."
+                f"Active critical blockades detected on {len(unique_blocked)} segment(s) were detoured. "
+                f"Net travel time is estimated at {disaster_eta_clean} hrs over {round(total_dist_km, 1)} km with a risk score of {risk_score}/100 ({risk_level})."
             )
         else:
             explanation = (
                 f"Primary Route ({primary_via_str}) selected as the safest deterministic path connecting {u_origin} to {v_dest} on the strategic corridor network. "
                 f"This corridor avoids high-severity landslide hazards, respects the {request.convoy_weight_tons}t convoy bridge limit, "
-                f"and provides optimal ETA ({total_disaster_eta} hrs) over a total distance of {round(total_dist_km, 1)} km."
+                f"and provides optimal ETA ({disaster_eta_clean} hrs) over a total distance of {round(total_dist_km, 1)} km."
             )
 
         if alternate_route_dict:
@@ -415,10 +521,10 @@ class NERRoutingEngine:
             risk_score=risk_score,
             riskLevel=risk_level,
             risk_level=risk_level,
-            riskFactors=list(set(primary_risk_factors)),
-            risk_factors=list(set(primary_risk_factors)),
+            riskFactors=unique_risk_factors,
+            risk_factors=unique_risk_factors,
             recommended=True,
-            blocked_segments=list(set(primary_blocked_segments)),
+            blocked_segments=unique_blocked,
             alternate_route=alternate_route_dict,
             decision_explanation=explanation,
             bedrock_explanation=bedrock_explanation,

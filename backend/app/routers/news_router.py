@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from app.services.news.base import NERISNewsArticle, NewsCategory, SeverityLevel
 from app.services.news.provider import get_news_service_manager
 
-router = APIRouter(prefix="/api/news", tags=["NERIS Disaster & Logistics Intelligence Feed API"])
+router = APIRouter(tags=["NERIS Disaster & Logistics Intelligence Feed API"])
 
 
 class UnverifiedReportResponse(BaseModel):
@@ -27,26 +27,32 @@ class AISummaryResponse(BaseModel):
     disclaimer: str = "AI-generated summary — verify with original source."
 
 
-@router.get("", status_code=status.HTTP_200_OK)
-@router.get("/search", status_code=status.HTTP_200_OK)
+@router.get("/api/v1/news", status_code=status.HTTP_200_OK)
+@router.get("/api/v1/news/search", status_code=status.HTTP_200_OK)
+@router.get("/api/news", status_code=status.HTTP_200_OK)
+@router.get("/api/news/search", status_code=status.HTTP_200_OK)
+@router.get("/news", status_code=status.HTTP_200_OK)
+@router.get("/news/search", status_code=status.HTTP_200_OK)
 async def get_news_feed(
     category: Optional[str] = Query(None, description="Filter by news category"),
     location: Optional[str] = Query(None, description="Filter by state or location region"),
     severity: Optional[str] = Query(None, description="Filter by severity level"),
+    language: Optional[str] = Query(None, description="Filter by language code (en, as, bn, hi, mn)"),
     q: Optional[str] = Query(None, description="Search query string"),
-    sort_by: Optional[str] = Query("relevance", description="Sort order: relevance, newest, severity"),
+    sort_by: Optional[str] = Query("relevance", description="Sort order: relevance, newest, severity, language"),
     is_demo: Optional[bool] = Query(False, description="Force demo seed dataset mode"),
     refresh: Optional[bool] = Query(False, description="Force instant live provider refresh")
 ):
     """
     Primary API endpoint for the NERIS Disaster & Logistics Intelligence Feed.
-    Consumed by the React News tab. Supports GET /api/news and GET /api/news/search?q=.
+    Consumed by the React News tab. Supports GET /api/v1/news, GET /api/news, and GET /news.
     """
     manager = get_news_service_manager()
     return await manager.get_news_feed(
         category=category,
         location=location,
         severity=severity,
+        language=language,
         q=q,
         sort_by=sort_by,
         force_demo=is_demo or False,
@@ -54,8 +60,12 @@ async def get_news_feed(
     )
 
 
-@router.get("/health", status_code=status.HTTP_200_OK)
-@router.get("/ingestion-status", status_code=status.HTTP_200_OK)
+@router.get("/api/v1/news/health", status_code=status.HTTP_200_OK)
+@router.get("/api/v1/news/ingestion-status", status_code=status.HTTP_200_OK)
+@router.get("/api/news/health", status_code=status.HTTP_200_OK)
+@router.get("/api/news/ingestion-status", status_code=status.HTTP_200_OK)
+@router.get("/news/health", status_code=status.HTTP_200_OK)
+@router.get("/news/ingestion-status", status_code=status.HTTP_200_OK)
 async def get_news_ingestion_health():
     """
     AWS EventBridge & Lambda News Ingestion Pipeline Operational Health & Metrics Endpoint.
@@ -97,7 +107,9 @@ async def get_news_ingestion_health():
     }
 
 
-@router.post("/ingest", status_code=status.HTTP_200_OK)
+@router.post("/api/v1/news/ingest", status_code=status.HTTP_200_OK)
+@router.post("/api/news/ingest", status_code=status.HTTP_200_OK)
+@router.post("/news/ingest", status_code=status.HTTP_200_OK)
 async def trigger_eventbridge_ingestion():
     """
     EventBridge & Lambda Scheduled Ingestion Trigger Endpoint:
@@ -114,7 +126,9 @@ async def trigger_eventbridge_ingestion():
     }
 
 
-@router.get("/categories", status_code=status.HTTP_200_OK)
+@router.get("/api/v1/news/categories", status_code=status.HTTP_200_OK)
+@router.get("/api/news/categories", status_code=status.HTTP_200_OK)
+@router.get("/news/categories", status_code=status.HTTP_200_OK)
 async def get_news_categories():
     """
     Returns supported news categories.
@@ -124,7 +138,9 @@ async def get_news_categories():
     }
 
 
-@router.get("/locations", status_code=status.HTTP_200_OK)
+@router.get("/api/v1/news/locations", status_code=status.HTTP_200_OK)
+@router.get("/api/news/locations", status_code=status.HTTP_200_OK)
+@router.get("/news/locations", status_code=status.HTTP_200_OK)
 async def get_news_locations():
     """
     Returns supported location filters across Northeast India.
@@ -137,7 +153,9 @@ async def get_news_locations():
     }
 
 
-@router.get("/{article_id}", response_model=NERISNewsArticle, status_code=status.HTTP_200_OK)
+@router.get("/api/v1/news/{article_id}", response_model=NERISNewsArticle, status_code=status.HTTP_200_OK)
+@router.get("/api/news/{article_id}", response_model=NERISNewsArticle, status_code=status.HTTP_200_OK)
+@router.get("/news/{article_id}", response_model=NERISNewsArticle, status_code=status.HTTP_200_OK)
 async def get_news_article_by_id(article_id: str):
     """
     Retrieves a single news article by ID.
@@ -149,7 +167,9 @@ async def get_news_article_by_id(article_id: str):
     return article
 
 
-@router.post("/{article_id}/ai-summary", response_model=AISummaryResponse, status_code=status.HTTP_200_OK)
+@router.post("/api/v1/news/{article_id}/ai-summary", response_model=AISummaryResponse, status_code=status.HTTP_200_OK)
+@router.post("/api/news/{article_id}/ai-summary", response_model=AISummaryResponse, status_code=status.HTTP_200_OK)
+@router.post("/news/{article_id}/ai-summary", response_model=AISummaryResponse, status_code=status.HTTP_200_OK)
 async def generate_ai_summary(article_id: str):
     """
     Generates a Bedrock/AI operational summary of the given news article.
@@ -175,7 +195,9 @@ async def generate_ai_summary(article_id: str):
     )
 
 
-@router.post("/{article_id}/convert-to-unverified-report", response_model=UnverifiedReportResponse, status_code=status.HTTP_200_OK)
+@router.post("/api/v1/news/{article_id}/convert-to-unverified-report", response_model=UnverifiedReportResponse, status_code=status.HTTP_200_OK)
+@router.post("/api/news/{article_id}/convert-to-unverified-report", response_model=UnverifiedReportResponse, status_code=status.HTTP_200_OK)
+@router.post("/news/{article_id}/convert-to-unverified-report", response_model=UnverifiedReportResponse, status_code=status.HTTP_200_OK)
 async def convert_article_to_unverified_report(article_id: str):
     """
     Converts a news article into an 'Unverified External Report' operational lead.

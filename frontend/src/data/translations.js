@@ -114,7 +114,7 @@ export const translations = {
     "fieldReportUploaded": "Field Report Uploaded to Central Server!",
     "savedToOfflineQueue": "Saved to Local Offline Queue!",
     "advisoryBroadcasted": "Broadcast notification & GIS map pin updated in real time.",
-    "offlineNotice": "Reports submitted in remote zero-connectivity zones are preserved locally in IndexedDB/LocalStorage.",
+    "offlineNotice": "Reports submitted in remote zero-connectivity zones are preserved locally on device storage.",
     "placeholderHeadline": "e.g. Landslide on NH-27 KM 184",
     "placeholderLocation": "e.g. Sonapur Tunnel Section",
     "placeholderDesc": "Describe debris volume, deployed BRO machinery, estimated clearance time...",

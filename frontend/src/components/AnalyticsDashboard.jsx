@@ -25,22 +25,22 @@ import {
 export const AnalyticsDashboard = () => {
   const { nerStates, t } = useApp();
 
-  const connectivityData = nerStates
-    .filter((s) => s.id !== 'all')
+  const connectivityData = (nerStates || [])
+    .filter((s) => s && s.id !== 'all')
     .map((s) => {
-      const localizedName = (t.stateNames && t.stateNames[s.id]) || s.name;
+      const localizedName = (t?.stateNames && t.stateNames[s.id]) || s.name || s.id || '';
       return {
-        name: localizedName.split(' ')[0],
-        fullName: localizedName,
-        connectivity: s.connectivityIndex
+        name: localizedName ? String(localizedName).split(' ')[0] : (s.id || ''),
+        fullName: localizedName || s.name || s.id,
+        connectivity: s.connectivityIndex || 0
       };
     });
 
   const hazardBreakdownData = [
-    { name: t.landslideRockfall || "Landslide / Rockfall", value: 48, color: "#FF2E93" },
-    { name: t.flashFloodTeesta || "Flash Flood / Teesta River", value: 28, color: "#00F2FE" },
-    { name: t.bridgeDamage || "Bridge Approach Damage", value: 16, color: "#F59E0B" },
-    { name: t.monsoonFog || "Monsoon Fog / Snow", value: 8, color: "#A855F7" }
+    { name: t?.landslideRockfall || "Landslide / Rockfall", value: 48, color: "#FF2E93" },
+    { name: t?.flashFloodTeesta || "Flash Flood / Teesta River", value: 28, color: "#00F2FE" },
+    { name: t?.bridgeDamage || "Bridge Approach Damage", value: 16, color: "#F59E0B" },
+    { name: t?.monsoonFog || "Monsoon Fog / Snow", value: 8, color: "#A855F7" }
   ];
 
   return (
@@ -177,25 +177,26 @@ export const AnalyticsDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {districtBuffers.map((d, idx) => {
-                const stateObj = nerStates.find(s => s.name.toLowerCase().includes(d.state.toLowerCase()) || d.state.toLowerCase().includes(s.name.toLowerCase()));
-                const localizedState = stateObj && t.stateNames ? t.stateNames[stateObj.id] : d.state;
-                const statusText = d.status === 'critical' ? (t.blocked || 'Blocked / Disrupted') : d.status === 'warning' ? (t.caution || 'High Risk / Caution') : (t.clear || 'Clear / Operational');
+              {(districtBuffers || []).map((d, idx) => {
+                const dState = d?.state || '';
+                const stateObj = (nerStates || []).find(s => s?.name && dState && (s.name.toLowerCase().includes(dState.toLowerCase()) || dState.toLowerCase().includes(s.name.toLowerCase())));
+                const localizedState = stateObj && t?.stateNames ? t.stateNames[stateObj.id] : dState;
+                const statusText = d?.status === 'critical' ? (t?.blocked || 'Blocked / Disrupted') : d?.status === 'warning' ? (t?.caution || 'High Risk / Caution') : (t?.clear || 'Clear / Operational');
 
                 return (
                   <tr key={idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <td data-label={t.districtCol} style={{ padding: '10px', fontWeight: 700, color: 'var(--color-text)' }}>{d.district}</td>
-                    <td data-label={t.stateCol} style={{ padding: '10px', color: 'var(--color-muted)' }}>{localizedState}</td>
-                    <td data-label={t.foodGrainsStock} style={{ padding: '10px', fontFamily: 'var(--font-mono)' }}>
-                      <span style={{ color: d.foodDays < 5 ? '#EF4444' : '#10B981', fontWeight: 700 }}>{d.foodDays} {t.daysUnit || 'Days'}</span>
+                    <td data-label={t?.districtCol || "District"} style={{ padding: '10px', fontWeight: 700, color: 'var(--color-text)' }}>{d.district}</td>
+                    <td data-label={t?.stateCol || "State"} style={{ padding: '10px', color: 'var(--color-muted)' }}>{localizedState}</td>
+                    <td data-label={t?.foodGrainsStock || "Food Grains"} style={{ padding: '10px', fontFamily: 'var(--font-mono)' }}>
+                      <span style={{ color: d.foodDays < 5 ? '#EF4444' : '#10B981', fontWeight: 700 }}>{d.foodDays} {t?.daysUnit || 'Days'}</span>
                     </td>
-                    <td data-label={t.medicalSupplies} style={{ padding: '10px', fontFamily: 'var(--font-mono)' }}>
-                      <span style={{ color: d.medDays < 4 ? '#EF4444' : '#10B981', fontWeight: 700 }}>{d.medDays} {t.daysUnit || 'Days'}</span>
+                    <td data-label={t?.medicalSupplies || "Medical Supplies"} style={{ padding: '10px', fontFamily: 'var(--font-mono)' }}>
+                      <span style={{ color: d.medDays < 4 ? '#EF4444' : '#10B981', fontWeight: 700 }}>{d.medDays} {t?.daysUnit || 'Days'}</span>
                     </td>
-                    <td data-label={t.fuelReserve} style={{ padding: '10px', fontFamily: 'var(--font-mono)' }}>
-                      <span style={{ color: d.fuelDays < 5 ? '#EF4444' : '#10B981', fontWeight: 700 }}>{d.fuelDays} {t.daysUnit || 'Days'}</span>
+                    <td data-label={t?.fuelReserve || "Fuel Reserve"} style={{ padding: '10px', fontFamily: 'var(--font-mono)' }}>
+                      <span style={{ color: d.fuelDays < 5 ? '#EF4444' : '#10B981', fontWeight: 700 }}>{d.fuelDays} {t?.daysUnit || 'Days'}</span>
                     </td>
-                    <td data-label={t.alertLevel} style={{ padding: '10px' }}>
+                    <td data-label={t?.alertLevel || "Alert Level"} style={{ padding: '10px' }}>
                       <span className={`pill ${d.status === 'critical' ? 'blocked' : d.status === 'warning' ? 'caution' : 'clear'}`}>
                         {statusText}
                       </span>

@@ -176,6 +176,30 @@ NERIS is designed as an event-driven, serverless logistics and emergency transit
 
 ---
 
+### 2.8 Historical Emergency Resource Allocation Intelligence Subsystem (Dataset 4)
+
+```
+[ Kaggle Raw Dataset ] (programmer3/emergency-resource-allocation-intelligence-data)
+       |
+       v Ingestion Pipeline (scripts/ingest_emergency_resource_allocation.py)
+[ Validation & Normalization Engine ]
+       |---> Enforces source_type = 'historical_dataset' & data_type = 'historical'
+       |---> Categorizes facilities: HOSPITAL | WAREHOUSE | SHELTER | TRANSPORT
+       |---> Computes deterministic state coverage scores (0-100 scale)
+       v
+[ Amazon S3 / DynamoDB Persistence ]
+       |---> S3 Raw & Processed: historical/emergency-resources/
+       |---> DynamoDB / JSON Cache: emergency_resources_db.json
+       v
+[ EmergencyResourceService & Router ] ---> /api/v1/emergency-resources/*
+       |---> GIS Layer (Cyan historical resource markers + NOT LIVE banner)
+       |---> Fleets / Resources Tab (Historical Resource Allocation Summary card)
+       |---> Analytics Dashboard (State capacity & category distribution charts)
+       |---> NetworkX Routing Engine (Dijkstra accessibility penalty: 1.0x to 1.15x)
+```
+
+---
+
 ## 3. Technology Stack Summary
 
 * **Frontend**: React 18, Vite, Vanilla CSS Design System, Leaflet GIS, Recharts.

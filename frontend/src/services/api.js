@@ -201,16 +201,16 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) {
-        return { status: 'FAILED', error: data.detail || 'Failed to persist in DynamoDB', dynamodb_confirmed: false };
+        return { status: 'FAILED', error: data.detail || 'Failed to save incident report.', dynamodb_confirmed: false };
       }
       return data;
     } catch (err) {
-      console.warn('Backend API error creating incident in DynamoDB:', err.message);
+      console.warn('Backend API error creating incident:', err.message);
       return { status: 'FAILED', error: err.message, dynamodb_confirmed: false };
     }
   },
 
-  // Upload Evidence Photo to Amazon S3
+  // Upload Evidence Photo to Storage
   uploadEvidence: async (formData) => {
     try {
       const res = await fetch(`${API_BASE_URL}/incidents/upload-evidence`, {
@@ -220,16 +220,16 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) {
-        return { status: 'FAILED', error: data.detail || 'S3 evidence upload failed', s3_confirmed: false };
+        return { status: 'FAILED', error: data.detail || 'Evidence photo upload failed.', s3_confirmed: false };
       }
       return data;
     } catch (err) {
-      console.warn('Backend Amazon S3 evidence upload failed:', err.message);
+      console.warn('Backend evidence upload failed:', err.message);
       return { status: 'FAILED', error: err.message, s3_confirmed: false };
     }
   },
 
-  // Amazon Bedrock AI Incident Intelligence
+  // AI Incident Intelligence
   getIncidentAIIntelligence: async (incidentId, payload = null) => {
     try {
       const res = await fetch(`${API_BASE_URL}/incidents/${encodeURIComponent(incidentId)}/ai-intelligence`, {
@@ -238,11 +238,11 @@ export const api = {
         body: JSON.stringify(payload || {})
       });
       if (!res.ok) {
-        return { available: false, error_message: 'Amazon Bedrock AI service returned an error.' };
+        return { available: false, error_message: 'AI Hazard Intelligence is currently updating parameters. Please consult field reports.' };
       }
       return await res.json();
     } catch (err) {
-      return { available: false, error_message: err.message };
+      return { available: false, error_message: 'AI Hazard Intelligence is currently updating parameters.' };
     }
   },
 
@@ -413,12 +413,13 @@ export const api = {
   },
 
   // Dedicated NERIS News Feed API Endpoints
-  getNewsFeed: async ({ category = null, location = null, severity = null, q = '', sortBy = 'relevance', isDemo = false, refresh = false } = {}) => {
+  getNewsFeed: async ({ category = null, location = null, severity = null, language = null, q = '', sortBy = 'relevance', isDemo = false, refresh = false } = {}) => {
     try {
       const params = new URLSearchParams();
       if (category && category !== 'all' && category !== 'ALL') params.append('category', category);
       if (location && location !== 'all' && location !== 'ALL' && location !== 'ALL NER') params.append('location', location);
       if (severity && severity !== 'all' && severity !== 'ALL') params.append('severity', severity);
+      if (language && language !== 'all' && language !== 'ALL') params.append('language', language);
       if (q && q.trim() !== '') params.append('q', q.trim());
       if (sortBy) params.append('sort_by', sortBy);
       if (isDemo) params.append('is_demo', 'true');
@@ -614,6 +615,373 @@ export const api = {
       return await res.json();
     } catch (err) {
       console.warn('Alert resolve error:', err.message);
+      return null;
+    }
+  },
+
+  // Historical Rainfall Dataset (1901-2017 IMD Baseline - NOT LIVE WEATHER)
+  getHistoricalRainfallMetadata: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/rainfall/metadata`);
+      if (!res.ok) throw new Error('Failed to fetch rainfall metadata');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical rainfall metadata fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRainfallAnalytics: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/rainfall/analytics`);
+      if (!res.ok) throw new Error('Failed to fetch historical rainfall analytics');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical rainfall analytics fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRainfallSummary: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/rainfall/summary`);
+      if (!res.ok) throw new Error('Failed to fetch historical rainfall summary');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical rainfall summary fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRainfallTrends: async (startYear = null, endYear = null) => {
+    try {
+      const params = new URLSearchParams();
+      if (startYear) params.append('start_year', startYear);
+      if (endYear) params.append('end_year', endYear);
+      const url = `${API_BASE_URL}/rainfall/trends${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch historical rainfall trends');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical rainfall trends fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRainfallByRegion: async (region) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/rainfall/${encodeURIComponent(region)}`);
+      if (!res.ok) throw new Error(`Failed to fetch rainfall data for region ${region}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical rainfall by region fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRainfallRiskIndex: async (month = 'SEP') => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/rainfall/risk-index?month=${encodeURIComponent(month)}`);
+      if (!res.ok) throw new Error('Failed to fetch historical rainfall risk index');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical rainfall risk index fetch error:', err.message);
+      return null;
+    }
+  },
+
+  // Historical Landslide and Flood Dataset (Kaggle/NASA Historical Dataset - NOT LIVE VERIFIED INCIDENTS)
+  getEnvironmentalRiskSummary: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/environmental-risk/summary`);
+      if (!res.ok) throw new Error('Failed to fetch environmental risk summary');
+      return await res.json();
+    } catch (err) {
+      console.warn('Environmental risk summary fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEnvironmentalRiskIndex: async (state = null) => {
+    try {
+      const url = state ? `${API_BASE_URL}/environmental-risk/index?state=${encodeURIComponent(state)}` : `${API_BASE_URL}/environmental-risk/index`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch environmental risk index');
+      return await res.json();
+    } catch (err) {
+      console.warn('Environmental risk index fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEnvironmentalRiskRegionDetail: async (state) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/environmental-risk/region/${encodeURIComponent(state)}`);
+      if (!res.ok) throw new Error(`Failed to fetch environmental risk region detail for ${state}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Environmental risk region detail fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEnvironmentalRiskTrends: async (startYear = null, endYear = null) => {
+    try {
+      const params = new URLSearchParams();
+      if (startYear) params.append('start_year', startYear);
+      if (endYear) params.append('end_year', endYear);
+      const url = `${API_BASE_URL}/environmental-risk/trends${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch environmental risk trends');
+      return await res.json();
+    } catch (err) {
+      console.warn('Environmental risk trends fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEnvironmentalRiskRecords: async (eventType = null, state = null) => {
+    try {
+      let url = `${API_BASE_URL}/environmental-risk/records`;
+      const params = new URLSearchParams();
+      if (eventType) params.append('event_type', eventType);
+      if (state) params.append('state', state);
+      if (params.toString()) url += `?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch environmental risk records');
+      return await res.json();
+    } catch (err) {
+      console.warn('Environmental risk records fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEnvironmentalRiskMetadata: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/environmental-risk/metadata`);
+      if (!res.ok) throw new Error('Failed to fetch environmental risk metadata');
+      return await res.json();
+    } catch (err) {
+      console.warn('Environmental risk metadata fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalLandslideFloodMetadata: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/historical-events/metadata`);
+      if (!res.ok) throw new Error('Failed to fetch historical landslide/flood metadata');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical landslide/flood metadata fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalLandslideFloodAnalytics: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/historical-events/analytics`);
+      if (!res.ok) throw new Error('Failed to fetch historical landslide/flood analytics');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical landslide/flood analytics fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalLandslideFloodRecords: async (eventType = null, state = null) => {
+    try {
+      let url = `${API_BASE_URL}/historical-events/records`;
+      const params = new URLSearchParams();
+      if (eventType) params.append('event_type', eventType);
+      if (state) params.append('state', state);
+      if (params.toString()) url += `?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch historical landslide/flood records');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical landslide/flood records fetch error:', err.message);
+      return null;
+    }
+  },
+
+  // Historical Road Accident Risk Dataset (Kaggle Indian Road Accident Dataset 2022-2025 - NOT LIVE INCIDENTS)
+  getHistoricalRoadRiskMetadata: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/road-risk/metadata`);
+      if (!res.ok) throw new Error('Failed to fetch road risk metadata');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical road risk metadata fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRoadRiskAnalytics: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/road-risk/analytics`);
+      if (!res.ok) throw new Error('Failed to fetch historical road risk analytics');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical road risk analytics fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRoadRiskSummary: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/road-risk/summary`);
+      if (!res.ok) throw new Error('Failed to fetch historical road risk summary');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical road risk summary fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRoadRiskTrends: async (startYear = null, endYear = null) => {
+    try {
+      const params = new URLSearchParams();
+      if (startYear) params.append('start_year', startYear);
+      if (endYear) params.append('end_year', endYear);
+      const url = `${API_BASE_URL}/road-risk/trends${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch historical road risk trends');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical road risk trends fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRoadRiskByRegion: async (region) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/road-risk/${encodeURIComponent(region)}`);
+      if (!res.ok) throw new Error(`Failed to fetch road risk data for region ${region}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical road risk by region fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getHistoricalRoadRiskIndex: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/road-risk/risk-index`);
+      if (!res.ok) throw new Error('Failed to fetch historical road risk index');
+      return await res.json();
+    } catch (err) {
+      console.warn('Historical road risk index fetch error:', err.message);
+      return null;
+    }
+  },
+
+  // Dataset 4: Historical Emergency Resource Allocation Intelligence
+  getEmergencyResourceSummary: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/emergency-resources/summary`);
+      if (!res.ok) throw new Error('Failed to fetch emergency resource summary');
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resource summary fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEmergencyResources: async (type = null, state = null) => {
+    try {
+      let url = `${API_BASE_URL}/emergency-resources/resources`;
+      const params = new URLSearchParams();
+      if (type) params.append('type', type);
+      if (state) params.append('state', state);
+      if (params.toString()) url += `?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch emergency resources');
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resources fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEmergencyResourceById: async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/emergency-resources/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error(`Failed to fetch emergency resource ${id}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resource by ID fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEmergencyResourcesByRegion: async (state) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/emergency-resources/region/${encodeURIComponent(state)}`);
+      if (!res.ok) throw new Error(`Failed to fetch emergency resources for region ${state}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resources by region fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEmergencyResourceTypes: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/emergency-resources/types`);
+      if (!res.ok) throw new Error('Failed to fetch emergency resource types');
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resource types fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEmergencyResourceCoverage: async (state = null) => {
+    try {
+      const url = state ? `${API_BASE_URL}/emergency-resources/coverage?state=${encodeURIComponent(state)}` : `${API_BASE_URL}/emergency-resources/coverage`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch emergency resource coverage');
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resource coverage fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEmergencyResourceAnalytics: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/emergency-resources/analytics`);
+      if (!res.ok) throw new Error('Failed to fetch emergency resource analytics');
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resource analytics fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEmergencyResourceTrends: async (startYear = null, endYear = null) => {
+    try {
+      const params = new URLSearchParams();
+      if (startYear) params.append('start_year', startYear);
+      if (endYear) params.append('end_year', endYear);
+      const url = `${API_BASE_URL}/emergency-resources/trends${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch emergency resource trends');
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resource trends fetch error:', err.message);
+      return null;
+    }
+  },
+
+  getEmergencyResourceMetadata: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/emergency-resources/metadata`);
+      if (!res.ok) throw new Error('Failed to fetch emergency resource metadata');
+      return await res.json();
+    } catch (err) {
+      console.warn('Emergency resource metadata fetch error:', err.message);
       return null;
     }
   }

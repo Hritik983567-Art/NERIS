@@ -154,19 +154,19 @@ export const activeFleets = [
     currentLocationName: "Mao Gate Bypass Junction",
     lat: 25.432,
     lng: 94.15,
-    speedKm: 0,
+    speedKm: 34,
     cargoTempC: 24.5,
     tempAlert: false,
     fuelPercent: 62,
-    status: "delayed",
-    eta: "11h 30m (Delayed)",
-    delayMinutes: 180,
+    status: "normal",
+    eta: "5h 15m",
+    delayMinutes: 0,
     state: "manipur",
     telemetryHistory: [
-      { time: "14:00", temp: 24.0, speed: 50 },
-      { time: "15:00", temp: 24.2, speed: 30 },
-      { time: "16:00", temp: 24.5, speed: 0 },
-      { time: "17:00", temp: 24.5, speed: 0 }
+      { time: "14:00", temp: 24.0, speed: 45 },
+      { time: "15:00", temp: 24.2, speed: 38 },
+      { time: "16:00", temp: 24.5, speed: 32 },
+      { time: "17:00", temp: 24.5, speed: 34 }
     ]
   },
   {

@@ -45,6 +45,8 @@ class NERISNewsArticle(BaseModel):
     ai_summary: Optional[str] = Field(None, description="Optional Bedrock/AI-generated summary stored separately")
     ai_translation: Optional[str] = Field(None, description="Optional Bedrock/AI-generated translation stored separately")
     original_language: Optional[str] = Field("en", description="Primary language code of article")
+    title_native: Optional[str] = Field(None, description="Native regional language headline text")
+    summary_native: Optional[str] = Field(None, description="Native regional language summary text")
     original_content: Optional[str] = Field(None, description="Preserved original raw article text or summary reference")
 
 

@@ -113,6 +113,8 @@ For full details, see [ARCHITECTURE.md](file:///c:/Users/Lenovo/OneDrive/Desktop
 5. **📵 Offline-First Batch Synchronization**: Queues field report submissions offline with client-side idempotency (`operation_id`), syncing automatically when internet resumes.
 6. **📰 Disaster Intelligence News Feed**: Ingests regional news updates with duplicate SHA256 filtering, category filters, and 5-language parallel translation.
 7. **🔒 Enterprise Security & RBAC**: Enforces Cognito JWT authorization with role restriction across `FIELD_OFFICER`, `DISPATCHER`, `COMMANDER`, and `ADMIN`.
+8. **🌧️ Historical Rainfall Intelligence (Dataset 1)**: Integrates 117-year IMD sub-divisional rainfall dataset (1901–2017) for environmental baseline risk modeling across monsoons.
+9. **🚗 Historical Road Accident Risk Layer (Dataset 2)**: Integrates Kaggle Indian Road Accident Dataset (2022–2025) as an aggregated state road-risk intelligence layer, calibrating NetworkX Dijkstra edge weights (1.0x to 1.35x) with mandatory non-live disclaimers.
 
 ---
 
@@ -129,6 +131,10 @@ For full details, see [ARCHITECTURE.md](file:///c:/Users/Lenovo/OneDrive/Desktop
 | Command Center Alert Lifecycle | Amazon DynamoDB (`ner_alerts`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
 | Offline Reporting & Idempotent Sync | AWS Lambda (`POST /batch-sync`) | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
 | Regional Disaster Intelligence Feed | Amazon EventBridge + DynamoDB | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
+| Dataset 1: Historical Rainfall Baselines | Amazon DynamoDB / S3 | `IMPLEMENTED` | `TESTED LOCALLY` (13/13) | `PLANNED` (SAM Stack Ready) |
+| Dataset 2: Historical Road Accident Risk | Amazon DynamoDB / S3 | `IMPLEMENTED` | `TESTED LOCALLY` (20/20) | `PLANNED` (SAM Stack Ready) |
+| Dataset 3: Historical Flood & Landslide Risk | Amazon DynamoDB / S3 | `IMPLEMENTED` | `TESTED LOCALLY` (24/24) | `PLANNED` (SAM Stack Ready) |
+| Dataset 4: Emergency Resource Intelligence | Amazon DynamoDB / S3 | `IMPLEMENTED` | `TESTED LOCALLY` (25/25) | `PLANNED` (SAM Stack Ready) |
 | Application API & Lambda Serverless | AWS Lambda + Amazon API Gateway | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
 | CloudWatch Centralized Logging | Amazon CloudWatch Logs | `IMPLEMENTED` | `TESTED LOCALLY` | `PLANNED` (SAM Stack Ready) |
 
@@ -232,15 +238,20 @@ For comprehensive security documentation, view [docs/SECURITY.md](file:///c:/Use
 
 ## 11. Testing & Verification
 
-Comprehensive automated test verification was executed against the live application environment.
+### Final AWS Production Verification Verdict
+**`IMPLEMENTED + LOCALLY VERIFIED + AWS NOT VERIFIED`**
 
-* **Total Test Cases Executed**: 47
-* **Pass Rate**: 100% (47 Passed, 0 Failed)
-* **Test Runner Script**: `scratch/run_full_system_tests.py`
+*(Reason: `aws` CLI and `sam` CLI tools are not installed in the environment, and AWS IAM credentials are unavailable. All local code, SAM IaC templates, boto3 adapters, security policies, unit tests, and production smoke scripts are fully implemented and verified locally.)*
 
-Modules verified: `AUTH`, `INCIDENTS`, `S3`, `BEDROCK`, `GIS`, `ROUTING`, `FLEET`, `ALERTS`, `OFFLINE`, `NEWS`.
+### Verification Matrix
+* **Dataset 1: Historical Rainfall (1901–2017 IMD Baseline)**: `13/13 PASSED` (`scratch/test_historical_rainfall_pipeline.py`)
+* **Dataset 2: Historical Road Accident Risk (2022–2025 MORTH Baseline)**: `20/20 PASSED` (`scratch/test_historical_road_accident_pipeline.py`)
+* **Dataset 3: Historical Flood & Landslide Risk (NASA/Kaggle Dataset)**: `24/24 PASSED` (`scratch/test_historical_environmental_risk_pipeline.py`)
+* **Dataset 4: Historical Emergency Resource Intelligence**: `25/25 PASSED` (`scratch/test_emergency_resource_pipeline.py`)
+* **Full 7-Tab System E2E Audit**: `7/7 PASSED` (`scratch/test_all_7_tabs_e2e.py`)
+* **Production Smoke Test Suite**: Created & Validated (`scratch/test_aws_production_smoke.py`)
 
-For the complete itemized test report, view [docs/TEST_REPORT.md](file:///c:/Users/Lenovo/OneDrive/Desktop/New%20folder/docs/TEST_REPORT.md).
+For the full detailed breakdown and security audit, inspect [scratch/aws_production_verification_report.md](file:///c:/Users/Lenovo/OneDrive/Desktop/New%20folder/scratch/aws_production_verification_report.md).
 
 ---
 

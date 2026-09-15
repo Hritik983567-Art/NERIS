@@ -17,6 +17,99 @@ import {
   UserCheck
 } from 'lucide-react';
 
+const fleetStatements = {
+  "NER-MED-8041": {
+    badge: "COLD-CHAIN MEDICAL ESCORT",
+    badgeColor: "#3B82F6",
+    notice: {
+      en: "Directly vector military/SDRF escorts, temperature-controlled cold-chain protection, and priority BRO clearing teams for high-priority life-saving medical supplies.",
+      as: "জিৱনৰক্ষাকাৰী চিকিৎসা সামগ্ৰীৰ বাবে প্ৰাথমিকতাৰে মিলিটাৰী/SDRF এস্কৰ্ট আৰু শীতল শৃংখলা সুৰক্ষা প্ৰদান কৰক।",
+      bn: "জীবনরক্ষাকারী চিকিৎসা সামগ্রীর জন্য অগ্রাধিকারের ভিত্তিতে সামরিক/SDRF এস্কর্ট এবং কোল্ড চেইন সুরক্ষা প্রদান করুন।",
+      hi: "जीवनरक्षक चिकित्सा आपूर्ति के लिए सैन्य/SDRF एस्कॉर्ट और कोल्ड-चेन सुरक्षा तुरंत प्रदान करें।",
+      mn: "Life-saving medicine supply ꯒꯤꯗꯃꯛ military/SDRF escort ꯑꯃꯁꯨꯡ cold-chain protection ꯄꯤꯌꯨ"
+    },
+    reason: {
+      en: "Urgent medical escort and cold-chain temperature monitoring required through high-risk landslide zone.",
+      as: "উচ্চ বিপদসংকুল ভূস্খলন অঞ্চলৰ মাজেৰে জৰুৰী চিকিৎসা এস্কৰ্ট আৰু শীতল শৃংখলা নিৰীক্ষণৰ প্ৰয়োজন।",
+      bn: "উচ্চ ঝুঁকিপূর্ণ পাহাড় ধস অঞ্চলের মধ্য দিয়ে জরুরি চিকিৎসা এস্কর্ট এবং কোল্ড-চেইন নিরীক্ষণ প্রয়োজন।",
+      hi: "उच्च जोखिम वाले भूस्खलन क्षेत्र के माध्यम से तत्काल चिकित्सा एस्कॉर्ट और कोल्ड-चेन निगरानी आवश्यक है।",
+      mn: "Landslide area ꯗ urgent medical escort ꯑꯃꯁꯨꯡ cold-chain monitoring ꯃꯊꯧ ꯇꯥꯏ"
+    }
+  },
+  "NER-FOOD-9102": {
+    badge: "FCI GRAIN RELIEF ESCORT",
+    badgeColor: "#F59E0B",
+    notice: {
+      en: "Priority dispatch for FCI essential grain convoys to prevent food supply disruptions and regional storage depletion across vulnerable flood-affected districts.",
+      as: "বানপানী প্ৰভাৱিত জিলাসমূহত খাদ্য সামগ্ৰীৰ নাটনি ৰোধ কৰিবলৈ FCI শস্য কনভয়ৰ প্ৰাথমিক প্ৰেৰণ।",
+      bn: "বন্যা কবলিত জেলাগুলিতে খাদ্য সংকট রোধ করতে এফসিআই শস্য কনভয়ের অগ্রাধিকার ভিত্তিতে জরুরি পাঠাও।",
+      hi: "बाढ़ प्रभावित जिलों में खाद्य आपूर्ति संकट रोकने हेतु FCI खाद्यान्न काफिले की प्राथमिकता से निकासी।",
+      mn: "Flood hit areas ꯗ food shortage ꯊꯤꯡꯅꯕ FCI grain convoy ꯒꯤ priority dispatch ꯄꯤꯌꯨ"
+    },
+    reason: {
+      en: "Urgent FCI grain convoy clearance and SDRF heavy vehicle escort required across inundated highway corridor.",
+      as: "বানপানী প্লাবিত হাইৱে কৰিডৰৰ মাজেৰে FCI শস্য কনভয়ৰ জৰুৰী SDRF এস্কৰ্টৰ প্ৰয়োজন।",
+      bn: "প্লাবিত হাইওয়ে করিডোরের মধ্য দিয়ে এফসিআই শস্য কনভয়ের জন্য জরুরি এসডিআরএফ এস্কর্ট প্রয়োজন।",
+      hi: "जलमग्न राजमार्ग गलियारे के माध्यम से FCI खाद्यान्न काफिले की तत्काल निकासी और SDRF एस्कॉर्ट आवश्यक।",
+      mn: "Inundated highway corridor ꯗ FCI grain convoy ꯒꯤ Urgent SDRF escort ꯃꯊꯧ ꯇꯥꯏ"
+    }
+  },
+  "NER-OXY-3055": {
+    badge: "HAZMAT CRYOGENIC LMO ESCORT",
+    badgeColor: "#EF4444",
+    notice: {
+      en: "CRITICAL LMO HAZMAT ESCORT: Immediate high-priority clearance with police pilot escort for cryogenic liquid medical oxygen tankers heading to district hospitals.",
+      as: "অত্যন্ত গুৰুত্বপূৰ্ণ লিকুইড অক্সিজেন টেংকাৰ: জিলা চিকিৎসালয়লৈ যোৱা ক্ৰায়'জেনিক অক্সিজেন টেংকাৰৰ বাবে জৰুৰী পুলিচ পাইলট এস্কৰ্ট।",
+      bn: "অত্যন্ত গুরুত্বপূর্ণ তরল অক্সিজেন ট্যাংকার: জেলা হাসপাতালে গমনকারী ক্রায়োজেনিক অক্সিজেন ট্যাংকারের জন্য জরুরি পুলিশ পাইলট এস্কর্ট।",
+      hi: "अति-गंभीर LMO क्रायोजेनिक टैंकर: जिला अस्पतालों के लिए पुलिस पायलट एस्कॉर्ट के साथ तत्काल प्राथमिकता निकासी।",
+      mn: "Hospital ꯗ ꯆꯠꯀꯗꯕ Cryogenic Oxygen Tanker ꯒꯤꯗꯃꯛ Immediate Police Pilot Escort ꯃꯊꯧ ꯇꯥꯏ"
+    },
+    reason: {
+      en: "CRITICAL: Cryogenic LMO pressure alert & hazardous terrain escort needed. Zero-delay passage required for hospital oxygen supply.",
+      as: "জৰুৰী: ক্ৰায়'জেনিক LMO চাপৰ সঁহাৰি আৰু বিপদসংকুল পথত আৰক্ষী এস্কৰ্টৰ প্ৰয়োজন।",
+      bn: "জরুরি: ক্রায়োজেনিক এলএমও প্রেশার অ্যালার্ট ও ঝুঁকিপূর্ণ ট্র্যাকে জরুরি পুলিশ এস্কর্ট প্রয়োজন।",
+      hi: "अत्यंत गंभीर: क्रायोजेनिक LMO दबाव अलर्ट और खतरनाक इलाके में त्वरित एस्कॉर्ट की आवश्यकता।",
+      mn: "CRITICAL: Cryogenic LMO pressure alert! Zero-delay passage required for hospital oxygen supply"
+    }
+  },
+  "NER-MAT-1104": {
+    badge: "BRO BRIDGE MACHINERY VECTOR",
+    badgeColor: "#8B5CF6",
+    notice: {
+      en: "Heavy BRO engineering clearance and structural equipment transport for immediate bailey bridge construction and road restoration teams.",
+      as: "বেলী দলং নিৰ্মাণ আৰু পথ পুনৰুদ্ধাৰকাৰী দলৰ বাবে BRO ইঞ্জিনিয়াৰিং সঁজুলি আৰু গধুৰ বাহনৰ প্ৰাথমিকতা প্ৰদান।",
+      bn: "বেইলি ব্রিজ নির্মাণ এবং সড়ক পুনর্বাসন দলের জন্য বিআরও ইঞ্জিনিয়ারিং সরঞ্জাম বহনকারী ভারী বাহনের অগ্রাধিকার গমন।",
+      hi: "बेली ब्रिज निर्माण और सड़क बहाली टीमों के लिए भारी BRO इंजीनियरिंग उपकरण परिवहन की प्राथमिकता निकासी।",
+      mn: "Bailey bridge ꯁꯥꯅꯕ ꯑꯃꯁꯨꯡ road repair team ꯒꯤꯗꯃꯛ Heavy BRO engineering equipment clearance ꯃꯊꯧ ꯇꯥꯏ"
+    },
+    reason: {
+      en: "Priority BRO engineering escort for structural steel & bridge machinery deployment to washed-out river crossing.",
+      as: "নদীৰ উটি যোৱা দলং স্থানলৈ ষ্টীল আৰু যন্ত্ৰপাতি প্ৰেৰণৰ বাবে BRO ইঞ্জিনিয়াৰিং এস্কৰ্ট।",
+      bn: "ক্ষতিগ্রস্ত নদী পারাপারের স্থানে বেইলি ব্রিজের যন্ত্রপাতি পাঠাতে বিআরও ইঞ্জিনিয়ারিং এস্কর্ট প্রয়োজন।",
+      hi: "क्षतिग्रस्त नदी पारगमन स्थल पर बेली ब्रिज मशीनरी की तैनाती के लिए प्राथमिकता BRO इंजीनियरिंग एस्कॉर्ट।",
+      mn: "Washed-out river crossing ꯗ bridge machinery deploy ꯇꯧꯅꯕ BRO engineering escort ꯃꯊꯧ ꯇꯥꯏ"
+    }
+  },
+  "NER-AGRI-5590": {
+    badge: "PERISHABLE AGRI CORRIDOR CLEARANCE",
+    badgeColor: "#10B981",
+    notice: {
+      en: "Time-sensitive agricultural corridor clearance for perishable organic produce and regional farmer supply chains under monsoon weather risks.",
+      as: "পচনশীল জৈৱিক কৃষি সামগ্ৰী আৰু আঞ্চলিক কৃষকৰ যোগান শৃংখলা ৰক্ষাৰ বাবে সময়-সংবেদনশীল হাইৱে ক্লিয়াৰেন্স।",
+      bn: "পচনশীল জৈব কৃষি পণ্য এবং আঞ্চলিক কৃষক সরবরাহ নিশ্চিত করতে সময়-সংবেদনশীল সড়ক অগ্রাধিকার প্রদান।",
+      hi: "नाशवान जैविक कृषि उपज और क्षेत्रीय किसान आपूर्ति श्रृंखला के संरक्षण हेतु समय-संवेदनशील निकासी।",
+      mn: "Perishable organic produce ꯒꯤ supply chain ꯉꯥꯛꯇꯨꯅ ꯊꯝꯅꯕ time-sensitive highway clearance ꯄꯤꯌꯨ"
+    },
+    reason: {
+      en: "Priority clearance required for perishable organic produce convoy facing extended highway blockades.",
+      as: "হাইৱে বন্ধৰ বাবে আবদ্ধ হৈ থকা পচনশীল জৈৱিক কৃষি সামগ্ৰীৰ কনভয়ৰ জৰুৰী ক্লিয়াৰেন্সৰ প্ৰয়োজন।",
+      bn: "হাইওয়ে অবরোধে আটকে থাকা পচনশীল জৈব কৃষি পণ্যের কনভয়ের জন্য জরুরি অগ্রাধিকার প্রয়োজন।",
+      hi: "राजमार्ग रुकावट में फंसे नाशवान जैविक उपज काफिले के लिए तत्काल प्राथमिकता निकासी आवश्यक।",
+      mn: "Highway blockades ꯗ ꯁꯣꯛꯂꯕ organic produce convoy ꯒꯤ priority clearance ꯃꯊꯧ ꯇꯥꯏ"
+    }
+  }
+};
+
 export const AlertCenter = () => {
   const {
     t,
@@ -32,7 +125,20 @@ export const AlertCenter = () => {
   } = useApp();
 
   const [selectedFleetId, setSelectedFleetId] = useState(fleets[0]?.id || "NER-MED-8041");
-  const [sosReason, setSosReason] = useState("Urgent medical escort required through landslide zone");
+  const [sosReason, setSosReason] = useState(() => {
+    const initFleet = fleets[0]?.id || "NER-MED-8041";
+    return fleetStatements[initFleet]?.reason?.en || "Urgent medical escort required through landslide zone";
+  });
+
+  const handleFleetChange = (newFleetId) => {
+    setSelectedFleetId(newFleetId);
+    const fleetConfig = fleetStatements[newFleetId];
+    if (fleetConfig) {
+      const defaultReason = fleetConfig.reason[lang] || fleetConfig.reason.en;
+      setSosReason(defaultReason);
+    }
+  };
+
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [sentBroadcastFeedback, setSentBroadcastFeedback] = useState(false);
   const [sosFeedback, setSosFeedback] = useState(false);
@@ -43,6 +149,18 @@ export const AlertCenter = () => {
     await triggerSOSAlert(selectedFleetId, sosReason);
     setSosFeedback(true);
     setTimeout(() => setSosFeedback(false), 4500);
+  };
+
+  const currentStatement = fleetStatements[selectedFleetId] || {
+    badge: "EMERGENCY DISASTER ESCALATION",
+    badgeColor: "#DC2626",
+    notice: {
+      en: "Directly vector military/SDRF escorts and priority BRO clearing teams for stranded medical and essential commodity convoys.",
+      as: "আৱদ্ধ হৈ থকা চিকিৎসা আৰু অপৰিহাৰ্য সামগ্ৰীৰ কনভয়ৰ বাবে প্ৰাথমিকতাৰে মিলিটাৰী/SDRF এস্কৰ্ট আৰু BRO দল প্ৰেৰণ কৰক।",
+      bn: "আটকে থাকা চিকিৎসা এবং নিত্যপ্রয়োজনীয় পণ্যের কনভয়ের জন্য অগ্রাধিকারের ভিত্তিতে সামরিক/এসডিআরএফ এস্কর্ট পাঠাও।",
+      hi: "फंसे हुए चिकित्सा और आवश्यक वस्तु काफ़िलों के लिए सैन्य/SDRF एस्कॉर्ट्स को तुरंत निर्देशित करें।",
+      mn: "Medical and essential commodity convoys ꯒꯤꯗꯃꯛ military/SDRF escort ꯄꯤꯌꯨ"
+    }
   };
 
   const handleCustomBroadcast = async (e) => {
@@ -199,7 +317,7 @@ export const AlertCenter = () => {
                             gap: '4px'
                           }}
                         >
-                          <Shield size={11} /> {alert.delivery_mode || 'In-App Operational Alert (AWS DynamoDB)'}
+                          <Shield size={11} /> {alert.delivery_mode ? alert.delivery_mode.replace(/\s*\(AWS DynamoDB\)/gi, '') : 'In-App Operational Alert'}
                         </span>
 
                         {/* Status Badge */}
@@ -223,9 +341,12 @@ export const AlertCenter = () => {
                       </div>
                     </div>
 
-                    {/* Alert Message */}
+                    {/* Clean & Concise Alert Message */}
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text)', margin: '2px 0 0 0', lineHeight: 1.45 }}>
-                      {alert.message}
+                      {(alert.message || '')
+                        .replace(/\s*\[Historical[^\]]+\]/g, '')
+                        .replace(/\s*\([^\)]*Risk Evaluation:[^\)]*\)/g, '')
+                        .trim()}
                     </p>
 
                     {/* Footer Row: Incident ID, Timestamp, Action Metadata & COMMANDER Action Button */}
@@ -416,7 +537,7 @@ export const AlertCenter = () => {
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  <ShieldCheck size={13} color="#10B981" /> In-App Operational Alert (AWS DynamoDB)
+                  <ShieldCheck size={13} color="#10B981" /> In-App Operational Alert
                 </div>
               </div>
             );
@@ -431,7 +552,7 @@ export const AlertCenter = () => {
 
           {sentBroadcastFeedback && (
             <div style={{ padding: '8px 12px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10B981', color: '#065F46', fontSize: '0.76rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={15} /> Operational Advisory Logged to AWS DynamoDB!
+              <CheckCircle2 size={15} /> Operational Advisory Logged!
             </div>
           )}
 
@@ -449,7 +570,7 @@ export const AlertCenter = () => {
               />
             </div>
             <button type="submit" className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.78rem', minHeight: '44px' }}>
-              <Send size={14} /> Log In-App Operational Advisory (AWS DynamoDB)
+              <Send size={14} /> Log In-App Operational Advisory
             </button>
           </form>
         </div>
@@ -466,10 +587,6 @@ export const AlertCenter = () => {
             </div>
           </div>
 
-          <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: '14px', flexShrink: 0 }}>
-            {t.sosSubNotice || "Directly vector military/SDRF escorts and priority BRO clearing teams for stranded medical and essential commodity convoys."}
-          </p>
-
           <form onSubmit={handleManualSOS} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <div className="form-group">
               <label htmlFor="sos-fleet-select" className="form-label">{t.targetFleet}</label>
@@ -477,7 +594,7 @@ export const AlertCenter = () => {
                 id="sos-fleet-select"
                 className="form-input"
                 value={selectedFleetId}
-                onChange={(e) => setSelectedFleetId(e.target.value)}
+                onChange={(e) => handleFleetChange(e.target.value)}
               >
                 {fleets.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -485,6 +602,42 @@ export const AlertCenter = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Dynamic Fleet-Specific Operational Directive Statement Panel */}
+            <div style={{
+              margin: '2px 0 14px 0',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              background: 'var(--color-surface)',
+              border: `1px solid ${currentStatement.badgeColor}`,
+              borderLeft: `5px solid ${currentStatement.badgeColor}`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{
+                  fontSize: '0.64rem',
+                  fontWeight: 900,
+                  letterSpacing: '0.5px',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  background: `${currentStatement.badgeColor}22`,
+                  color: currentStatement.badgeColor,
+                  border: `1px solid ${currentStatement.badgeColor}`
+                }}>
+                  {currentStatement.badge}
+                </span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--color-muted)', fontWeight: 600 }}>
+                  Target Directive
+                </span>
+              </div>
+
+              <p style={{ fontSize: '0.76rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.45, fontWeight: 500 }}>
+                {currentStatement.notice[lang] || currentStatement.notice.en}
+              </p>
             </div>
 
             <div className="form-group">

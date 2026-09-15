@@ -16,7 +16,11 @@ from app.routers import (
     news_router,
     alerts_router,
     incidents_router,
-    auth_router
+    auth_router,
+    rainfall_router,
+    landslide_flood_router,
+    road_risk_router,
+    emergency_resource_router
 )
 
 logging.basicConfig(
@@ -119,6 +123,10 @@ app.include_router(live_web_router.router)
 app.include_router(external_router.router)
 app.include_router(news_router.router)
 app.include_router(alerts_router.router)
+app.include_router(rainfall_router.router)
+app.include_router(landslide_flood_router.router)
+app.include_router(road_risk_router.router)
+app.include_router(emergency_resource_router.router)
 
 # AWS Lambda Handler Wrapper for AWS SAM / API Gateway
 class LambdaHandlerWrapper:

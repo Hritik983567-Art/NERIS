@@ -9,6 +9,7 @@ router = APIRouter(tags=["NERIS Deterministic Route Planner Engine"])
 @router.post("/api/v1/routes/compute", response_model=OptimizedRouteResponse, status_code=status.HTTP_200_OK)
 @router.post("/api/routes/plan", response_model=OptimizedRouteResponse, status_code=status.HTTP_200_OK)
 @router.post("/api/v1/routes/plan", response_model=OptimizedRouteResponse, status_code=status.HTTP_200_OK)
+@router.post("/api/v1/routing/optimize-route", response_model=OptimizedRouteResponse, status_code=status.HTTP_200_OK)
 async def compute_disaster_aware_route(request: OptimizeRouteRequest):
     """
     Consumes real active NERIS incidents from DynamoDB, evaluates terrain/weather/weight risks, 

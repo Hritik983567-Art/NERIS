@@ -37,7 +37,7 @@ export const AppProvider = ({ children }) => {
       created_at: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       status: "ACTIVE",
-      delivery_mode: "In-App Operational Alert (AWS DynamoDB)"
+      delivery_mode: "In-App Operational Alert"
     },
     {
       id: "ALT-1002",
@@ -52,7 +52,7 @@ export const AppProvider = ({ children }) => {
       status: "ACKNOWLEDGED",
       acknowledged_by: "Cmdr. R. Gogoi",
       acknowledged_at: new Date(Date.now() - 1800000).toISOString(),
-      delivery_mode: "In-App Operational Alert (AWS DynamoDB)"
+      delivery_mode: "In-App Operational Alert"
     }
   ]);
 
@@ -92,9 +92,9 @@ export const AppProvider = ({ children }) => {
               const mapped = backendIncidents.map((inc) => ({
                 id: inc.id || inc.local_incident_id || `INC-${Date.now()}`,
                 title: `${inc.hazard_type || 'HAZARD'} Alert (${inc.district || 'Corridor'})`,
-                type: (inc.hazard_type || 'LANDSLIDE').toLowerCase().includes('flood') ? 'flood' : 'landslide',
+                type: String(inc.hazard_type || 'LANDSLIDE').toLowerCase().includes('flood') ? 'flood' : 'landslide',
                 severity: inc.severity || 'CRITICAL',
-                state: (inc.district || 'assam').toLowerCase(),
+                state: String(inc.district || 'assam').toLowerCase(),
                 locationName: `${inc.highway_id || 'NH Highway'} - ${inc.district || 'NER'}`,
                 lat: inc.lat,
                 lng: inc.lng,
@@ -262,6 +262,7 @@ export const AppProvider = ({ children }) => {
                 speedKm: match.speed,
                 heading: match.heading,
                 fuelPercent: match.fuel,
+                cargoTempC: match.cargo_temp_c !== undefined ? match.cargo_temp_c : fleet.cargoTempC,
                 status: match.status,
                 current_route: match.current_route,
                 last_updated: match.last_updated,
@@ -489,23 +490,27 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const syncOfflineQueue = async () => {
+  const syncOfflineQueue = async (isManual = false) => {
     const queuedItems = await offlineQueueDB.getAllQueuedIncidents();
     const pendingItems = queuedItems.filter(item => item.status === 'PENDING SYNC' || item.status === 'FAILED');
 
-    if (pendingItems.length === 0) return;
+    if (pendingItems.length === 0) {
+      const refreshedAll = await offlineQueueDB.getAllQueuedIncidents();
+      setOfflineQueue(refreshedAll);
+      return;
+    }
 
     for (const item of pendingItems) {
       const attemptCount = (item.attemptCount || 0) + 1;
       const lastAttemptAt = new Date().toISOString();
 
-      // Exponential Backoff Delay calculation: 1000 * 2^(attemptCount - 1) ms
-      if (attemptCount > 1) {
+      // Exponential Backoff Delay calculation: only for background auto-syncs, skip on manual button click
+      if (!isManual && attemptCount > 1) {
         const backoffMs = Math.min(1000 * Math.pow(2, attemptCount - 1), 8000);
         await new Promise(res => setTimeout(res, backoffMs));
       }
 
-      // 1. Mark as SYNCING in IndexedDB & state
+      // 1. Mark as SYNCING in IndexedDB & state immediately for responsive feedback
       await offlineQueueDB.updateQueuedIncident(item.localQueueId, {
         status: 'SYNCING',
         attemptCount,
@@ -515,7 +520,24 @@ export const AppProvider = ({ children }) => {
       setOfflineQueue(await offlineQueueDB.getAllQueuedIncidents());
 
       try {
-        const ddbRes = await api.createIncident(item.payload);
+        // Sanitize payload before sending to backend to ensure non-empty title, description, coordinates, type, severity
+        const p = item.payload || {};
+        const sanitizedPayload = {
+          ...p,
+          title: (p.title || p.locationName || "Field Incident Report").trim(),
+          description: (p.description || p.title || `Field incident reported at ${p.locationName || p.location_name || "NER Corridor"}`).trim(),
+          type: (p.type || p.incidentType || "ROAD_BLOCKAGE").toUpperCase(),
+          incidentType: (p.type || p.incidentType || "ROAD_BLOCKAGE").toUpperCase(),
+          severity: (p.severity || "CRITICAL").toUpperCase(),
+          state: p.state || "assam",
+          district: p.district || p.state || "assam",
+          latitude: parseFloat(p.latitude ?? p.lat ?? 26.1445),
+          longitude: parseFloat(p.longitude ?? p.lng ?? 91.7362),
+          lat: parseFloat(p.lat ?? p.latitude ?? 26.1445),
+          lng: parseFloat(p.lng ?? p.longitude ?? 91.7362)
+        };
+
+        const ddbRes = await api.createIncident(sanitizedPayload);
         
         // Handle 401 Unauthorized Token Expiration cleanly without losing queued items
         if (ddbRes && (ddbRes.status === 401 || ddbRes.error === '401 Unauthorized' || ddbRes.error?.includes('Unauthorized'))) {
@@ -555,7 +577,7 @@ export const AppProvider = ({ children }) => {
             status: 'FAILED',
             attemptCount,
             lastAttemptAt,
-            error: ddbRes?.error || 'DynamoDB sync failed'
+            error: ddbRes?.error || ddbRes?.detail || 'Failed to persist in DynamoDB'
           });
         }
       } catch (err) {
@@ -580,6 +602,12 @@ export const AppProvider = ({ children }) => {
 
     const finalQueue = await offlineQueueDB.getAllQueuedIncidents();
     setOfflineQueue(finalQueue);
+  };
+
+  const removeOfflineQueueItem = async (localQueueId) => {
+    await offlineQueueDB.removeQueuedIncident(localQueueId);
+    const updated = await offlineQueueDB.getAllQueuedIncidents();
+    setOfflineQueue(updated);
   };
 
 
@@ -647,9 +675,9 @@ export const AppProvider = ({ children }) => {
   const isCommander = Boolean(
     user &&
     !user.isPublic &&
-    (user.role?.toLowerCase().includes('commander') ||
-     user.role?.toLowerCase().includes('cmd') ||
-     user.id?.startsWith('NER-CMD'))
+    (String(user.role || '').toLowerCase().includes('commander') ||
+     String(user.role || '').toLowerCase().includes('cmd') ||
+     String(user.id || '').startsWith('NER-CMD'))
   );
 
   const acknowledgeCommandAlert = async (alertId) => {
@@ -753,6 +781,7 @@ export const AppProvider = ({ children }) => {
         offlineQueue,
         addIncidentReport,
         syncOfflineQueue,
+        removeOfflineQueueItem,
         fleets,
         sendTelemetryPing,
         alerts,

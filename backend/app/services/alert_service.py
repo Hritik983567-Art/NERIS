@@ -208,6 +208,9 @@ class AlertService:
         if req.description:
             risk_message = f"{req.description} ({risk_message})"
 
+        # Keep risk_message clean, concise, and operational for Command Center view
+        # (Historical research metrics are kept in analytics services, not dumped into active operational alerts)
+
         new_alert = {
             "id": alert_id,
             "alertId": alert_id,

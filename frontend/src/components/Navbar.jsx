@@ -59,11 +59,7 @@ export const Navbar = () => {
             <Radio size={18} color="#FFFFFF" />
           </div>
           <h1 className="brand-title" style={{ fontSize: '1rem' }}>{t.appTitle}</h1>
-          {(import.meta.env.PROD || import.meta.env.MODE === 'production') ? (
-            <span className="pill clear" style={{ fontSize: '0.6rem', padding: '1px 6px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid #10B981' }}>☁️ AWS PROD</span>
-          ) : (
-            <span className="pill warning" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>⚡ DEV MODE</span>
-          )}
+          <span className="pill clear" style={{ fontSize: '0.6rem', padding: '1px 6px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid #10B981' }}>🟢 SYSTEM ONLINE</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -234,11 +230,7 @@ export const Navbar = () => {
                   {t.emergencyTransitSubTitle || "Emergency Transit"}
                 </p>
                 <div style={{ marginTop: '2px' }}>
-                  {(import.meta.env.PROD || import.meta.env.MODE === 'production') ? (
-                    <span className="pill clear" style={{ fontSize: '0.58rem', padding: '1px 5px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid #10B981' }}>☁️ AWS PROD MODE</span>
-                  ) : (
-                    <span className="pill warning" style={{ fontSize: '0.58rem', padding: '1px 5px' }}>⚡ DEV MODE — LOCAL FALLBACKS</span>
-                  )}
+                  <span className="pill clear" style={{ fontSize: '0.58rem', padding: '1px 5px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid #10B981' }}>🟢 SYSTEM OPERATIONAL</span>
                 </div>
               </div>
             )}

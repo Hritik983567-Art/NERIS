@@ -136,9 +136,24 @@ class TelemetryService:
 
         iso_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # 1. Proximity Calculation against active incidents in DynamoDB
+        # 1. Proximity Calculation against static hazard hotspots and active incidents
         min_dist_km = float('inf')
         nearest_incident = None
+
+        try:
+            from app.services.telemetry_simulation import HAZARD_HOTSPOTS
+            for h in HAZARD_HOTSPOTS:
+                dist = haversine_km(v_lat, v_lng, float(h["lat"]), float(h["lng"]))
+                if dist < min_dist_km:
+                    min_dist_km = dist
+                    nearest_incident = {
+                        "id": h["id"],
+                        "title": h["name"],
+                        "severity": h.get("severity", "CRITICAL"),
+                        "district": h.get("state", "ASSAM").upper()
+                    }
+        except Exception:
+            pass
         
         try:
             from app.services.incidents_service import get_incidents_service
@@ -159,26 +174,15 @@ class TelemetryService:
         except Exception as err:
             logger.warning(f"Could not load live incidents for telemetry proximity check: {err}")
 
-        # Fallback default hazard check if min_dist_km is infinite
-        if min_dist_km == float('inf'):
-            hazard_lat, hazard_lng = 25.1833, 93.0167  # Haflong Landslide Corridor
-            min_dist_km = haversine_km(v_lat, v_lng, hazard_lat, hazard_lng)
-            nearest_incident = {
-                "id": "INC-HAFLONG-8921",
-                "title": "Severe Landslide at NH-27 Haflong Highway",
-                "severity": "CRITICAL",
-                "district": "ASSAM"
-            }
-
-        proximity_threshold_km = 30.0
-        in_proximity = min_dist_km <= proximity_threshold_km
+        proximity_threshold_km = 25.0
+        in_proximity = (nearest_incident is not None) and (min_dist_km <= proximity_threshold_km)
         
         warning_msg = None
         reroute_advised = False
         alert_created = None
         status_val = "CLEAR"
 
-        if in_proximity:
+        if in_proximity and nearest_incident:
             inc_title = nearest_incident.get("title", "Active Hazard")
             inc_sev = nearest_incident.get("severity", "HIGH").upper()
             inc_id = nearest_incident.get("id", "INC-PROX")

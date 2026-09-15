@@ -27,7 +27,7 @@ Globals:
   Function:
     Timeout: 30
     MemorySize: 512
-    Runtime: python3.11
+    Runtime: python3.10
     Environment:
       Variables:
         AWS_REGION_NAME: ap-south-1
@@ -89,6 +89,58 @@ Resources:
           AttributeType: S
       KeySchema:
         - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # 1e. DynamoDB Table for Historical Rainfall Dataset (1901-2017 IMD Baseline)
+  NerisHistoricalRainfallTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ner_historical_rainfall
+      AttributeDefinitions:
+        - AttributeName: subdivision
+          AttributeType: S
+      KeySchema:
+        - AttributeName: subdivision
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # 1f. DynamoDB Table for Historical Landslide & Flood Research Dataset (Kaggle/NASA Historical Dataset)
+  NerisHistoricalLandslidesFloodsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ner_historical_landslides_floods
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # 1g. DynamoDB Table for Historical Road Accident Risk Dataset (MORTH Baseline)
+  NerisHistoricalRoadAccidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ner_historical_road_accidents
+      AttributeDefinitions:
+        - AttributeName: state
+          AttributeType: S
+      KeySchema:
+        - AttributeName: state
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # 1h. DynamoDB Table for Historical Emergency Resource Intelligence (Dataset 4)
+  NerisEmergencyResourcesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ner_emergency_resources
+      AttributeDefinitions:
+        - AttributeName: resource_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: resource_id
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
@@ -166,6 +218,14 @@ Resources:
             TableName: !Ref NerisNewsArticlesTable
         - DynamoDBCrudPolicy:
             TableName: !Ref NerisFleetTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NerisHistoricalRainfallTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NerisHistoricalLandslidesFloodsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NerisHistoricalRoadAccidentsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NerisEmergencyResourcesTable
         - S3CrudPolicy:
             BucketName: !Ref NerisEvidenceBucket
         - Statement:

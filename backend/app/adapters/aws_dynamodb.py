@@ -165,7 +165,12 @@ class DynamoDBAdapter:
                 logger.info(f"Successfully persisted incident '{inc_id}' to DynamoDB table '{self.table_name}'.")
                 saved_to_aws = True
             except (BotoCoreError, ClientError) as err:
+                if settings.is_production:
+                    logger.error(f"DynamoDB put_item failed in PRODUCTION mode: {err}")
+                    raise RuntimeError(f"DynamoDB put_item failed in PRODUCTION mode: {err}")
                 logger.warning(f"DynamoDB put_item notice ({err}). Persisting to local fallback cache.")
+        elif settings.is_production:
+            raise RuntimeError(f"DynamoDB table '{self.table_name}' unconfigured or unavailable in PRODUCTION mode.")
 
         # Prepare serializable return object (converting Decimal back to float)
         item_cache = dict(item)
@@ -202,7 +207,13 @@ class DynamoDBAdapter:
                         incidents.append(item)
                     return incidents
             except (BotoCoreError, ClientError) as err:
+                if settings.is_production:
+                    logger.error(f"DynamoDB scan failed in PRODUCTION mode: {err}")
+                    raise RuntimeError(f"DynamoDB scan failed in PRODUCTION mode: {err}")
                 logger.warning(f"DynamoDB scan notice ({err}). Reading from local fallback cache.")
+
+        if settings.is_production:
+            raise RuntimeError(f"DynamoDB scan failed or table '{self.table_name}' unavailable in PRODUCTION mode.")
 
         cached_items = self._read_from_local_cache()
         for item in cached_items:

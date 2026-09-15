@@ -42,13 +42,33 @@ export class ErrorBoundary extends React.Component {
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#38BDF8', marginBottom: '8px' }}>
               NERIS Intelligence Platform Ready
             </h1>
-            <p style={{ fontSize: '0.86rem', color: '#94A3B8', marginBottom: '20px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '0.86rem', color: '#94A3B8', marginBottom: '16px', lineHeight: 1.5 }}>
               Application state updated. Click below to reload and initialize the GIS Command Dashboard.
             </p>
+            {this.state.error && (
+              <div style={{
+                background: '#0F172A',
+                border: '1px solid #EF4444',
+                color: '#F87171',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                fontSize: '0.78rem',
+                textAlign: 'left',
+                marginBottom: '20px',
+                fontFamily: 'monospace',
+                overflowX: 'auto',
+                maxHeight: '120px'
+              }}>
+                {this.state.error.toString()}
+              </div>
+            )}
             <button
               onClick={() => {
-                localStorage.clear();
-                window.location.reload();
+                try {
+                  localStorage.clear();
+                  sessionStorage.clear();
+                } catch (e) {}
+                window.location.href = '/';
               }}
               style={{
                 background: 'linear-gradient(135deg, #0284C7, #2563EB)',

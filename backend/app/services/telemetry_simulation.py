@@ -56,7 +56,7 @@ PREDEFINED_ROUTES: Dict[str, Dict[str, Any]] = {
         "destination": "Gangtok State Yard (Sikkim)",
         "total_distance_km": 114.0,
         "waypoints": [
-            {"name": "Siliguri Logistics Hub", "lat": 26.7271, "88.3953": 88.3953, "lng": 88.3953},
+            {"name": "Siliguri Logistics Hub", "lat": 26.7271, "lng": 88.3953},
             {"name": "Sevoke Bridge Pass", "lat": 26.8912, "lng": 88.4715},
             {"name": "Rangpo Border Checkpost", "lat": 27.1764, "lng": 88.5321},
             {"name": "Gangtok Central Depot", "lat": 27.3389, "lng": 88.6065}
@@ -93,67 +93,83 @@ PREDEFINED_ROUTES: Dict[str, Dict[str, Any]] = {
 INITIAL_CONVOYS = [
     {
         "vehicle_id": "NER-MED-8041",
-        "driver_name": "Rajesh Sharma",
-        "driver_phone": "+91 98640 11234",
-        "category": "Life-Saving Vaccines & Insulin (Cold-Chain)",
-        "payload": "4,000 Vials mRNA COVID & Typhoid Vaccines",
+        "driver_name": "Tashi Norbu",
+        "driver_phone": "+91 94361 11234",
+        "category": "Medicines & Essential Drugs",
+        "payload": "Life-Saving Vaccines & Insulin (Cold-Chain)",
         "cargo_type": "MEDICINE",
-        "state": "assam",
-        "origin": "Guwahati Central FCI Depot",
-        "destination": "Silchar / Barak Valley Depot",
+        "state": "arunachal pradesh",
+        "origin": "Guwahati Central Depot",
+        "destination": "Tawang District Hospital",
         "route_id": "ROUTE-NH40-MEG",
-        "speed": 42.5,
+        "speed": 38.0,
         "fuel": 84.5,
-        "cargo_temp_c": 3.8,
-        "vehicle_type": "Heavy Cold-Chain Truck"
+        "cargo_temp_c": 3.2,
+        "vehicle_type": "Refrigerated Truck 10T"
     },
     {
-        "vehicle_id": "NER-OXY-9022",
-        "driver_name": "Biren Das",
-        "driver_phone": "+91 94350 22341",
-        "category": "Liquid Medical Oxygen (Cryogenic)",
+        "vehicle_id": "NER-FOOD-9102",
+        "driver_name": "Bikramjit Singh",
+        "driver_phone": "+91 98620 55432",
+        "category": "Food Grains (FCI Supply)",
+        "payload": "18 Tonnes Fortified Rice & Pulses",
+        "cargo_type": "GRAIN",
+        "state": "manipur",
+        "origin": "Silchar FCI Hub",
+        "destination": "Imphal West Distribution Center",
+        "route_id": "ROUTE-NH37-MAN",
+        "speed": 32.0,
+        "fuel": 62.0,
+        "cargo_temp_c": 24.5,
+        "vehicle_type": "Multi-Axle Heavy Hauler"
+    },
+    {
+        "vehicle_id": "NER-OXY-3055",
+        "driver_name": "Debashish Das",
+        "driver_phone": "+91 97740 88219",
+        "category": "Liquid Medical Oxygen",
         "payload": "12,000 Liters Cryogenic Oxygen Tanker",
         "cargo_type": "MEDICINE",
         "state": "meghalaya",
-        "origin": "Guwahati Oxygen Plant",
-        "destination": "Shillong Civil Hospital",
+        "origin": "Bongaigaon Refinery",
+        "destination": "NEIGRIHMS Shillong",
         "route_id": "ROUTE-NH40-MEG",
-        "speed": 28.0,
-        "fuel": 68.0,
+        "speed": 52.0,
+        "fuel": 88.0,
         "cargo_temp_c": -182.0,
-        "vehicle_type": "Cryogenic Tanker"
+        "vehicle_type": "Cryogenic Oxygen Tanker"
     },
     {
-        "vehicle_id": "NER-GRAIN-3310",
-        "driver_name": "M. Sangma",
-        "driver_phone": "+91 97740 55123",
-        "category": "Fortified Rice & Grains (FCI Relief)",
-        "payload": "20 Metric Tonnes FCI Rice Sacks",
-        "cargo_type": "GRAIN",
-        "state": "manipur",
-        "origin": "Guwahati Central Depot",
-        "destination": "Imphal Valley Buffer Yard",
+        "vehicle_id": "NER-MAT-1104",
+        "driver_name": "Renedy Chingtham",
+        "driver_phone": "+91 94022 33104",
+        "category": "Bridge Construction Materials",
+        "payload": "Modular Bailey Bridge Steel Girders",
+        "cargo_type": "MATERIALS",
+        "state": "nagaland",
+        "origin": "Dimapur Logistics Yard",
+        "destination": "Tuensang BRO Detachment",
         "route_id": "ROUTE-NH37-MAN",
-        "speed": 35.0,
-        "fuel": 72.0,
-        "cargo_temp_c": 24.0,
-        "vehicle_type": "Multi-Axle Cargo Truck"
+        "speed": 28.0,
+        "fuel": 54.0,
+        "cargo_temp_c": 22.0,
+        "vehicle_type": "Heavy Equipment Carrier"
     },
     {
-        "vehicle_id": "NER-FUEL-7019",
-        "driver_name": "K. Zomi",
-        "driver_phone": "+91 98560 99812",
-        "category": "High Altitude Diesel Fuel Tanker",
-        "payload": "18,000 Liters Winter-Grade Diesel",
-        "cargo_type": "FUEL",
+        "vehicle_id": "NER-AGRI-5590",
+        "driver_name": "Lalthlamuana",
+        "driver_phone": "+91 96121 99042",
+        "category": "Horticulture & Organic Spices",
+        "payload": "8.5 Tonnes Export Grade Bird's Eye Chilli & Pineapple",
+        "cargo_type": "GRAIN",
         "state": "mizoram",
-        "origin": "Silchar Fuel Depot",
-        "destination": "Aizawl Power Hub",
+        "origin": "Aizawl Agri Market",
+        "destination": "Guwahati Cargo Airport Complex",
         "route_id": "ROUTE-NH54-MIZ",
-        "speed": 30.0,
-        "fuel": 45.0,
+        "speed": 46.0,
+        "fuel": 82.0,
         "cargo_temp_c": 18.5,
-        "vehicle_type": "Fuel Tanker"
+        "vehicle_type": "Insulated Cargo Van"
     },
     {
         "vehicle_id": "NER-RAW-4105",
@@ -269,8 +285,10 @@ class TelemetrySimulator:
                 "state": config["state"],
                 "origin": config["origin"],
                 "destination": config["destination"],
+                "base_speed": config["speed"],
                 "speed": config["speed"],
                 "fuel": config["fuel"],
+                "base_cargo_temp_c": config["cargo_temp_c"],
                 "cargo_temp_c": config["cargo_temp_c"],
                 "vehicle_type": config["vehicle_type"],
                 "latitude": initial_lat,
@@ -298,7 +316,8 @@ class TelemetrySimulator:
 
     def step_simulation(self):
         """
-        Advances all vehicles along their predefined routes based on speed & time delta.
+        Advances all vehicles along their predefined routes based on speed & time delta,
+        with realistic live telemetry oscillations for speed, compass bearing, fuel, and temperature.
         """
         now = time.time()
         delta_seconds = max(0.5, min(10.0, now - self._last_simulation_time))
@@ -330,8 +349,16 @@ class TelemetrySimulator:
 
             # Step along segment by speed (speed in km/h -> km per sec = speed / 3600)
             dist_seg_km = max(0.1, haversine_km(wp_start["lat"], wp_start["lng"], wp_end["lat"], wp_end["lng"]))
-            speed_kmh = v["speed"]
-            step_km = (speed_kmh / 3600.0) * delta_seconds * 12.0  # Time acceleration factor for visible UI movement
+            
+            # Smooth dynamic speed variation representing realistic terrain driving
+            base_sp = v.get("base_speed", 35.0)
+            hash_offset = sum(ord(c) for c in v_id)
+            phase = (now + hash_offset % 100)
+            speed_delta = (math.sin(phase / 2.2) * 5.5) + (math.cos(phase / 3.8) * 3.0)
+            current_speed = round(max(15.0, min(75.0, base_sp + speed_delta)), 1)
+            v["speed"] = current_speed
+
+            step_km = (current_speed / 3600.0) * delta_seconds * 12.0  # Time acceleration factor for visible UI movement
 
             v["segment_progress"] += step_km / dist_seg_km
 
@@ -355,11 +382,21 @@ class TelemetrySimulator:
 
             v["latitude"] = round(new_lat, 5)
             v["longitude"] = round(new_lng, 5)
-            v["heading"] = round(calculate_heading_degrees(wp_start["lat"], wp_start["lng"], wp_end["lat"], wp_end["lng"]), 1)
+            
+            # Base heading with micro steering variation
+            base_heading = calculate_heading_degrees(wp_start["lat"], wp_start["lng"], wp_end["lat"], wp_end["lng"])
+            steering_jitter = math.sin(now * 1.5 + hash_offset % 10) * 0.8
+            v["heading"] = round((base_heading + steering_jitter) % 360.0, 1)
+            
+            # Micro cargo temperature oscillation
+            base_temp = v.get("base_cargo_temp_c", 22.0)
+            temp_jitter = math.sin(now * 0.7 + hash_offset % 7) * 0.2
+            v["cargo_temp_c"] = round(base_temp + temp_jitter, 1)
+
             v["last_updated"] = retrieved_at_str
             
             # Fuel slowly decreases and refills when below 10%
-            v["fuel"] = round(max(5.0, v["fuel"] - 0.05), 1)
+            v["fuel"] = round(max(5.0, v["fuel"] - 0.04), 1)
             if v["fuel"] <= 8.0:
                 v["fuel"] = 98.0
 
