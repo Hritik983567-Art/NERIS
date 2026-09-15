@@ -53,35 +53,25 @@ It combines:
 
 ## 3. Architecture
 
-```
-                               ┌────────────────────────────────────────────────────────┐
-                               │               React 18 Frontend App                    │
-                               │           (Hosted on AWS Amplify / S3)                 │
-                               └───────────────────────────┬────────────────────────────┘
-                                                           │
-                                                           ▼ HTTPS Requests (Cognito JWT)
-                               ┌────────────────────────────────────────────────────────┐
-                               │               Amazon API Gateway HTTP API              │
-                               │            (Stage: Prod, Region: ap-south-1)           │
-                               └───────────────────────────┬────────────────────────────┘
-                                                           │
-                                                           ▼ AWS Lambda Integration
-                               ┌────────────────────────────────────────────────────────┐
-                               │              AWS Lambda FastAPI API Engine             │
-                               │          (Python 3.11 Runtime, Mangum ASGI Handler)    │
-                               └──────┬────────────────────┬────────────────────┬───────┘
-                                      │                    │                    │
-              ┌───────────────────────┴───────┐   ┌────────┴─────────┐   ┌──────┴────────────────────────┐
-              │                               │   │                  │   │                               │
-              ▼                               ▼   ▼                  ▼   ▼                               ▼
-    ┌──────────────────┐            ┌───────────────────┐      ┌──────────────────┐            ┌──────────────────┐
-    │ Amazon DynamoDB  │            │     Amazon S3     │      │  Amazon Cognito  │            │  Amazon Bedrock  │
-    │  Tables:         │            │  Bucket:          │      │  User Pool:      │            │  Model:          │
-    │  ner_incidents   │            │  neris-evidence-  │      │  NerisCommand    │            │  Claude 3 Haiku  │
-    │  ner_alerts      │            │  photos-ap-south-1│      │  UserPool        │            │                  │
-    │  ner_news        │            └───────────────────┘      └──────────────────┘            └──────────────────┘
-    │  ner_fleet       │
-    └──────────────────┘
+```mermaid
+flowchart TD
+    SPA["React 18 Frontend SPA (Hosted on AWS Amplify / S3)"]
+    APIGW["Amazon API Gateway HTTP API (Stage: Prod, ap-south-1)"]
+    Lambda["AWS Lambda FastAPI API Engine (Python 3.11 Runtime, Mangum Handler)"]
+
+    subgraph AWS ["AWS Cloud Managed Services"]
+        DDB[("Amazon DynamoDB (ner_incidents, ner_alerts, ner_news, ner_fleet)")]
+        S3["Amazon S3 Bucket (neris-evidence-photos)"]
+        Cognito["Amazon Cognito User Pool (NerisCommandUserPool)"]
+        Bedrock["Amazon Bedrock (Claude 3 Haiku)"]
+    end
+
+    SPA == "HTTPS Requests (Cognito JWT)" ==> APIGW
+    APIGW ==> Lambda
+    Lambda --> DDB
+    Lambda --> S3
+    Lambda --> Cognito
+    Lambda --> Bedrock
 ```
 
 For full details, see [ARCHITECTURE.md](file:///c:/Users/Lenovo/OneDrive/Desktop/New%20folder/ARCHITECTURE.md) and [docs/AWS_ARCHITECTURE.md](file:///c:/Users/Lenovo/OneDrive/Desktop/New%20folder/docs/AWS_ARCHITECTURE.md).

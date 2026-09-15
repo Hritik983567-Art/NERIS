@@ -12,29 +12,20 @@
 
 The application connects the existing React 18 client to a cloud-native AWS Serverless infrastructure:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          REACT FRONTEND CLIENT                              │
-│                    (Vite + Leaflet + Recharts + CSS)                         │
-└───────────────────────────────────┬─────────────────────────────────────────┘
-                                    │  HTTP / HTTPS REST API
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         AMAZON API GATEWAY                                  │
-│             (CORS Enabled • RestApi / HttpApi Stage / Endpoint)             │
-└───────────────────────────────────┬─────────────────────────────────────────┘
-                                    │  ASGI Proxy Invocation
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            AWS LAMBDA                                       │
-│          (Python 3.11 Runtime • Mangum ASGI Handler • FastAPI)              │
-└──────────────┬────────────────────┬────────────────────┬────────────────────┘
-               │                    │                    │
-               ▼                    ▼                    ▼
-┌─────────────────────────┐  ┌──────────────────┐  ┌─────────────────────────┐
-│     AMAZON DYNAMODB     │  │    AMAZON S3     │  │     AMAZON COGNITO      │
-│  (Table: ner_incidents) │  │(Evidence Bucket) │  │  (User Pool Authentication)
-└─────────────────────────┘  └──────────────────┘  └─────────────────────────┘
+```mermaid
+flowchart TD
+    Client["REACT FRONTEND CLIENT<br/>(Vite + Leaflet + Recharts + Vanilla CSS)"]
+    Gateway["AMAZON API GATEWAY<br/>(CORS Enabled • REST / HTTP API)"]
+    Lambda["AWS LAMBDA FUNCTION<br/>(Python 3.11 • Mangum ASGI • FastAPI)"]
+    DynamoDB[("AMAZON DYNAMODB<br/>(Table: ner_incidents)")]
+    S3[("AMAZON S3<br/>(Evidence Bucket)")]
+    Cognito["AMAZON COGNITO<br/>(User Pool Authentication)"]
+
+    Client -->|"HTTP / HTTPS REST API"| Gateway
+    Gateway -->|"ASGI Proxy Invocation"| Lambda
+    Lambda -->|"boto3 Store / Scan"| DynamoDB
+    Lambda -->|"boto3 Upload Media"| S3
+    Lambda -->|"JWT Token Validation"| Cognito
 ```
 
 ### Component Breakdown

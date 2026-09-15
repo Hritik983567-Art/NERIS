@@ -10,32 +10,25 @@
 
 ## 1. AWS System Architecture Diagram
 
-```
-                           ┌────────────────────────────────────────────────────────┐
-                           │                  React Single Page App                 │
-                           │          (Hosted on AWS Amplify / S3 Static)           │
-                           └───────────────────────────┬────────────────────────────┘
-                                                       │
-                                                       ▼ HTTPS Requests
-                           ┌────────────────────────────────────────────────────────┐
-                           │               Amazon API Gateway HTTP API              │
-                           │           (Stage: Prod, Region: ap-south-1)            │
-                           └───────────────────────────┬────────────────────────────┘
-                                                       │
-                                                       ▼ AWS Lambda Integration
-                           ┌────────────────────────────────────────────────────────┐
-                           │              AWS Lambda FastAPI API Engine             │
-                           │          (Python 3.11 Runtime, Mangum ASGI Handler)    │
-                           └──────┬────────────────────┬────────────────────┬───────┘
-                                  │                    │                    │
-          ┌───────────────────────┴───────┐   ┌────────┴─────────┐   ┌──────┴────────────────────────┐
-          │                               │   │                  │   │                               │
-          ▼                               ▼   ▼                  ▼   ▼                               ▼
-┌──────────────────┐            ┌───────────────────┐      ┌──────────────────┐            ┌──────────────────┐
-│ Amazon DynamoDB  │            │     Amazon S3     │      │  Amazon Cognito  │            │  Amazon Bedrock  │
-│  Table:          │            │  Bucket:          │      │  User Pool:      │            │  Model:          │
-│  'ner_incidents' │            │  'neris-evidence' │      │  'NerisUserPool' │            │  Claude 3 / Titan│
-└──────────────────┘            └───────────────────┘      └──────────────────┘            └──────────────────┘
+```mermaid
+flowchart TD
+    SPA["React Single Page App (Hosted on AWS Amplify / S3 Static Web)"]
+    APIGW["Amazon API Gateway HTTP API (Stage: Prod, Region: ap-south-1)"]
+    Lambda["AWS Lambda FastAPI API Engine (Python 3.11 Runtime, Mangum Handler)"]
+
+    subgraph Stack ["AWS Managed Infrastructure"]
+        DDB[("Amazon DynamoDB (ner_incidents, ner_alerts, ner_news, ner_fleet)")]
+        S3["Amazon S3 Bucket (neris-evidence-photos-ap-south-1)"]
+        Cognito["Amazon Cognito User Pool (NerisCommandUserPool)"]
+        Bedrock["Amazon Bedrock (Claude 3 Haiku)"]
+    end
+
+    SPA == "HTTPS Requests" ==> APIGW
+    APIGW ==> Lambda
+    Lambda --> DDB
+    Lambda --> S3
+    Lambda --> Cognito
+    Lambda --> Bedrock
 ```
 
 ---

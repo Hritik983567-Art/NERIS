@@ -25,6 +25,50 @@ Each endpoint specification details:
 
 ---
 
+## API Request Routing Architecture
+
+```mermaid
+flowchart TD
+    Client["CLIENT REQUEST<br/>(React Frontend / Mobile / REST)"]
+    ApiGw["AMAZON API GATEWAY<br/>(CORS • Throttling • Route Dispatcher)"]
+    CognitoCheck{"Cognito JWT<br/>Authorization Check"}
+
+    subgraph Modules["NERIS Backend API Modules"]
+        AuthMod["1. Auth & Identity<br/>(/api/v1/auth)"]
+        IncidentsMod["2. Field Incidents & AI<br/>(/api/v1/incidents)"]
+        AlertsMod["3. Command Alerts & SOS<br/>(/api/v1/alerts)"]
+        RoutingMod["4. Deterministic Routing<br/>(/api/v1/routes)"]
+        TelemetryMod["5. Fleet Telemetry<br/>(/api/v1/telemetry)"]
+        NewsMod["6. News Intelligence<br/>(/api/news)"]
+        GisMod["7. GIS & External Data<br/>(/api/v1/network)"]
+        HealthMod["8. System Health<br/>(/health)"]
+    end
+
+    subgraph AWS["AWS Serverless Infrastructure"]
+        CognitoPool["Amazon Cognito User Pool"]
+        DynamoTables[("Amazon DynamoDB Tables")]
+        S3Bucket[("Amazon S3 Bucket")]
+        BedrockAI["Amazon Bedrock AI"]
+        EventBridgeRule["Amazon EventBridge"]
+    end
+
+    Client --> ApiGw
+    ApiGw --> CognitoCheck
+    CognitoCheck -->|"Public / Token Verified"| Modules
+    CognitoCheck -->|"Invalid Token"| HTTP401["HTTP 401 Unauthorized"]
+
+    AuthMod --> CognitoPool
+    IncidentsMod --> DynamoTables
+    IncidentsMod --> S3Bucket
+    IncidentsMod --> BedrockAI
+    AlertsMod --> DynamoTables
+    TelemetryMod --> DynamoTables
+    NewsMod --> DynamoTables
+    NewsMod --> EventBridgeRule
+```
+
+---
+
 ## 1. Authentication & User Identity API Module
 
 ### 1.1 `POST /api/v1/auth/register`

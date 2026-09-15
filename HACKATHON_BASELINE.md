@@ -18,6 +18,45 @@ In strict accordance with the AWS / WeMakeDevs First Commit Hackathon guidelines
 
 ---
 
+## Architecture Transformation Baseline
+
+```mermaid
+flowchart LR
+    subgraph PreHackathon["PRE-HACKATHON BASELINE (Local Prototype)"]
+        direction TB
+        ClientOld["React 18 Frontend UI"]
+        ServerOld["Local Uvicorn FastAPI Server"]
+        FileOld[("Local JSON File Storage")]
+        MediaOld[("Local Uploads Folder")]
+        AuthOld["Client-Side UI Role Toggle"]
+        
+        ClientOld --> ServerOld
+        ServerOld --> FileOld
+        ServerOld --> MediaOld
+        ClientOld --> AuthOld
+    end
+
+    subgraph FirstCommit["FIRST COMMIT DELIVERABLE (AWS Serverless)"]
+        direction TB
+        ClientNew["React 18 Frontend Hardened"]
+        ApiGw["Amazon API Gateway"]
+        LambdaNew["AWS Lambda (Mangum ASGI)"]
+        DynamoNew[("Amazon DynamoDB (4 Pay-Per-Request Tables)")]
+        S3New[("Amazon S3 (Presigned Uploads & AES256)")]
+        CognitoNew["Amazon Cognito User Pool (JWT RBAC)"]
+        BedrockNew["Amazon Bedrock (Claude 3 Haiku AI)"]
+
+        ClientNew -->|"REST API"| ApiGw
+        ApiGw --> LambdaNew
+        LambdaNew --> DynamoNew
+        LambdaNew --> S3New
+        LambdaNew --> CognitoNew
+        LambdaNew --> BedrockNew
+    end
+```
+
+---
+
 ## 2. PRE-HACKATHON PREPARATION (Starting Baseline State)
 
 Prior to the hackathon window (September 17, 2026), the repository served as a functional local UI prototype for disaster logistics visualization in North-East India.

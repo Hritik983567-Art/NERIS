@@ -13,6 +13,43 @@
 This document presents the verified automated test execution report for the **NERIS — North-East Regional Emergency Transit System** platform. All test cases were programmatically executed against the live application system and AWS integrations using the automated test suite runner (`scratch/run_full_system_tests.py`).
 
 
+
+---
+
+## Test Execution Pipeline & Module Coverage
+
+```mermaid
+flowchart TD
+    Runner["AUTOMATED TEST RUNNER<br/>(scratch/run_full_system_tests.py)"]
+
+    subgraph Suite["10 System Test Modules (47 Test Cases)"]
+        AUTH["1. AUTH (5/5 PASSED)<br/>Cognito JWT & RBAC"]
+        INC["2. INCIDENTS (6/6 PASSED)<br/>DynamoDB CRUD & Validation"]
+        S3["3. S3 (4/4 PASSED)<br/>Presigned Uploads & Security"]
+        BED["4. BEDROCK (5/5 PASSED)<br/>AI Analysis & Injection Defense"]
+        GIS["5. GIS (3/3 PASSED)<br/>Map Markers & Risk Layers"]
+        ROUTE["6. ROUTING (4/4 PASSED)<br/>NetworkX Dijkstra Solver"]
+        FLEET["7. FLEET (4/4 PASSED)<br/>Telemetry & Haversine Engine"]
+        ALERT["8. ALERTS (4/4 PASSED)<br/>Command Center Lifecycle"]
+        OFF["9. OFFLINE (5/5 PASSED)<br/>Batch Sync & Idempotency"]
+        NEWS["10. NEWS (7/7 PASSED)<br/>EventBridge Ingestion & Dedup"]
+    end
+
+    Result["VERIFICATION RESULTS<br/>(47/47 PASSED • 100% Pass Rate • 0 Failures)"]
+
+    Runner --> Suite
+    AUTH --> Result
+    INC --> Result
+    S3 --> Result
+    BED --> Result
+    GIS --> Result
+    ROUTE --> Result
+    FLEET --> Result
+    ALERT --> Result
+    OFF --> Result
+    NEWS --> Result
+```
+
 ---
 
 ## System Test Matrix & Execution Results

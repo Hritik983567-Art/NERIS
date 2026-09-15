@@ -12,6 +12,48 @@
 This document details the security model, threat mitigation strategies, authentication mechanisms, authorization controls, data storage encryption policies, file upload security safeguards, secrets management, AI prompt injection protections, and audit compliance for the **NERIS — North-East Regional Emergency Transit System** application.
 
 
+
+---
+
+## Security Architecture & Defense-in-Depth
+
+```mermaid
+flowchart TD
+    Client["CLIENT REQUEST<br/>(React 18 UI / IndexedDB Queue)"]
+    TokenHeader{"HTTP Authorization Header<br/>(Bearer Cognito JWT Token)"}
+
+    subgraph AuthLayer["1. Authentication & Identity Layer"]
+        CognitoPool["Amazon Cognito User Pool<br/>(RSA-256 Signature & Exp Verification)"]
+        RBAC{"Server-Side RBAC Check<br/>(FIELD_OFFICER, DISPATCHER, COMMANDER, ADMIN)"}
+    end
+
+    subgraph DefenseLayer["2. Threat Defense & Input Sanitization"]
+        PathSanitize["Filename Path Traversal Defense<br/>(os.path.basename & Extension Whitelist)"]
+        PromptGuard["Bedrock Prompt Injection Guard<br/>(&lt;untrusted_input&gt; XML Tags Isolation)"]
+        IdempotencyCheck["Sync Idempotency Validation<br/>(operation_id Deduplication)"]
+    end
+
+    subgraph DataSecurity["3. Encrypted AWS Serverless Storage"]
+        S3Presigned[("Amazon S3 Evidence Bucket<br/>(SSE-AES256 • Presigned URLs • Public Access Block)")]
+        DynamoKMS[("Amazon DynamoDB Tables<br/>(KMS Encryption at Rest • IAM Scoped Policies)")]
+    end
+
+    Client --> TokenHeader
+    TokenHeader -->|"Present"| CognitoPool
+    TokenHeader -->|"Missing / Invalid"| Reject["HTTP 401 Unauthorized"]
+    CognitoPool --> RBAC
+    RBAC -->|"Role Authorized"| DefenseLayer
+    RBAC -->|"Role Unauthorized"| Forbidden["HTTP 403 Forbidden"]
+
+    DefenseLayer --> PathSanitize
+    DefenseLayer --> PromptGuard
+    DefenseLayer --> IdempotencyCheck
+
+    PathSanitize --> S3Presigned
+    PromptGuard --> DynamoKMS
+    IdempotencyCheck --> DynamoKMS
+```
+
 ---
 
 ## 1. 20-Point Security Audit Verification Matrix

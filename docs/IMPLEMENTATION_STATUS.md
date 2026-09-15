@@ -7,6 +7,25 @@
 *Disclaimer: NERIS is an independent student project and is not affiliated with the U.S. NERIS framework.*
 
 
+
+---
+
+## System Verification Workflow
+
+```mermaid
+flowchart TD
+    Audit["1. Codebase Audit & Risk Identification<br/>(Mock APIs, localStorage, Security Risks Identified)"]
+    LocalImpl["2. Local Adapter & Feature Implementation<br/>(DynamoDB, S3, Cognito, Bedrock, NetworkX)"]
+    AutomatedTests["3. 47-Point Local Verification & Smoke Tests<br/>(100% Pass Rate: Auth, Incidents, Routing, Sync)"]
+    SamStack["4. AWS SAM Infrastructure Packaging<br/>(template.yaml: API Gateway, Lambda, S3, DynamoDB, Cognito)"]
+    DeployReady["5. Production Cloud Deployment Readiness<br/>(Zero-Mock AWS Serverless Pipeline Verified)"]
+
+    Audit --> LocalImpl
+    LocalImpl --> AutomatedTests
+    AutomatedTests --> SamStack
+    SamStack --> DeployReady
+```
+
 ---
 
 ## 1. Codebase Audit & Mock Analysis

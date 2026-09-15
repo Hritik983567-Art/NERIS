@@ -43,6 +43,31 @@ During the AWS First Commit Hackathon, the entire application was upgraded into 
 * **Amazon CloudWatch**: Configured `/aws/lambda/neris-api-function` log group with token-redacted structured logging.
 * **Amazon EventBridge**: Set up scheduled ingestion triggers for regional disaster news workflows.
 
+
+---
+
+## Hackathon Release Timeline & Evolution
+
+```mermaid
+flowchart TD
+    PreHack["1. PRE-HACKATHON BASELINE<br/>(Client-side UI prototype, local JSON & mock files)"]
+    Phase1["2. FIRST COMMIT AWS SERVERLESS<br/>(Lambda, API Gateway, DynamoDB, S3, Cognito, Bedrock)"]
+    Phase2["3. SECURITY HARDENING & 47-POINT TEST SUITE<br/>(JWT verification, CORS, 100% pass rate test suite)"]
+    Dataset1["4. DATASET 1 INTEGRATION<br/>(IMD 117-Year Historical Rainfall Baseline 1901-2017)"]
+    Dataset2["5. DATASET 2 INTEGRATION<br/>(Indian Road Accident Risk Baseline 2022-2025)"]
+    Dataset3["6. DATASET 3 INTEGRATION<br/>(NASA / Kaggle Historical Landslide & Flood Catalog 2000-2023)"]
+    Dataset4["7. DATASET 4 INTEGRATION<br/>(Kaggle Emergency Resource Allocation Intelligence)"]
+    FinalProd["8. FULL PRODUCTION HARDENING & E2E VERIFICATION<br/>(7/7 Tabs Clean E2E Verification, Sanitized UI Alerts)"]
+
+    PreHack --> Phase1
+    Phase1 --> Phase2
+    Phase2 --> Dataset1
+    Dataset1 --> Dataset2
+    Dataset2 --> Dataset3
+    Dataset3 --> Dataset4
+    Dataset4 --> FinalProd
+```
+
 ---
 
 ## 3. SECURITY HARDENING & SYSTEM VERIFICATION

@@ -10,53 +10,31 @@
 
 ## 1. System Architecture Diagram
 
-```
-                                  ┌────────────────────────────────────────────────────────┐
-                                  │               React Single Page Application            │
-                                  │          (Hosted on AWS Amplify / S3 Static Web)       │
-                                  └───────────────────────────┬────────────────────────────┘
-                                                              │
-                                                              ▼ HTTPS Requests (JWT Auth)
-                                  ┌────────────────────────────────────────────────────────┐
-                                  │               Amazon API Gateway HTTP API              │
-                                  │           (Stage: Prod, Region: ap-south-1)            │
-                                  └───────────────────────────┬────────────────────────────┘
-                                                              │
-                                                              ▼ AWS Lambda Integration
-                                  ┌────────────────────────────────────────────────────────┐
-                                  │              AWS Lambda FastAPI API Engine             │
-                                  │          (Python 3.11 Runtime, Mangum ASGI Handler)    │
-                                  └──────┬────────────────────┬────────────────────┬───────┘
-                                         │                    │                    │
-                 ┌───────────────────────┴───────┐   ┌────────┴─────────┐   ┌──────┴────────────────────────┐
-                 │                               │   │                  │   │                               │
-                 ▼                               ▼   ▼                  ▼   ▼                               ▼
-       ┌──────────────────┐            ┌───────────────────┐      ┌──────────────────┐            ┌──────────────────┐
-       │ Amazon DynamoDB  │            │     Amazon S3     │      │  Amazon Cognito  │            │  Amazon Bedrock  │
-       │  Tables:         │            │  Bucket:          │      │  User Pool:      │            │  Model:          │
-       │  ner_incidents   │            │  neris-evidence-  │      │  NerisCommand    │            │  Claude 3 Haiku  │
-       │  ner_alerts      │            │  photos-ap-south-1│      │  UserPool        │            │                  │
-       │  ner_news        │            └───────────────────┘      └──────────────────┘            └──────────────────┘
-       │  ner_fleet       │
-       └──────────────────┘
-                 ▲                                                                                          ▲
-                 │                                                                                          │
-                 │                     ┌────────────────────────────────────────┐                           │
-                 └─────────────────────┤          Amazon EventBridge            ├───────────────────────────┘
-                                       │    (Scheduled Ingestion & Event Bus)   │
-                                       └───────────────────┬────────────────────┘
-                                                           │
-                                                           ▼
-                                       ┌────────────────────────────────────────┐
-                                       │        AWS Secrets Manager             │
-                                       │     (External News / Weather Keys)     │
-                                       └───────────────────┬────────────────────┘
-                                                           │
-                                                           ▼
-                                       ┌────────────────────────────────────────┐
-                                       │          Amazon CloudWatch             │
-                                       │     (Metrics, Alarm Logs & Audit)      │
-                                       └────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    SPA["React Single Page Application (AWS Amplify / S3 Static Web)"]
+    APIGW["Amazon API Gateway HTTP API (Stage: Prod, Region: ap-south-1)"]
+    Lambda["AWS Lambda FastAPI API Engine (Python 3.11 Runtime, Mangum ASGI)"]
+
+    subgraph AWS ["AWS Cloud Managed Stack"]
+        DDB[("Amazon DynamoDB (ner_incidents, ner_alerts, ner_news, ner_fleet)")]
+        S3["Amazon S3 Bucket (neris-evidence-photos-ap-south-1)"]
+        Cognito["Amazon Cognito User Pool (NerisCommandUserPool)"]
+        Bedrock["Amazon Bedrock (Claude 3 Haiku)"]
+        EventBridge["Amazon EventBridge (Scheduled Ingestion Bus)"]
+        Secrets["AWS Secrets Manager (API Keys)"]
+        CloudWatch["Amazon CloudWatch (Metrics & Audit Logs)"]
+    end
+
+    SPA == "HTTPS Requests (JWT Auth)" ==> APIGW
+    APIGW ==> Lambda
+    Lambda --> DDB
+    Lambda --> S3
+    Lambda --> Cognito
+    Lambda --> Bedrock
+    EventBridge --> Lambda
+    Secrets --> Lambda
+    Lambda --> CloudWatch
 ```
 
 ---

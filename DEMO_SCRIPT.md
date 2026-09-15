@@ -25,28 +25,20 @@
 
 This demonstration showcases **ONE complete operational story** tracking a real disaster event from the field responder on the ground to the Command Center commander:
 
-```
-FIELD OFFICER 
-  ↓ (Cognito Login)
-Report Landslide 
-  ↓ (Presigned S3 Upload)
-Upload Photo Evidence 
-  ↓ (Amazon S3 Storage)
-Incident Stored in DynamoDB 
-  ↓ (Amazon Bedrock Analysis)
-Bedrock Analyzes Incident 
-  ↓ (Human-in-the-Loop Officer Verification)
-Human Verification 
-  ↓ (GIS Map Marker Update)
-GIS Incident Marker 
-  ↓ (NetworkX Dijkstra Solver)
-Deterministic Route Risk Changes 
-  ↓ (EventBridge Geofence Proximity)
-Simulated Fleet Enters Danger Radius 
-  ↓ (Amazon SNS SOS Dispatch)
-Alert Generated 
-  ↓ (Command Center Situation Dashboard)
-Commander Sees Updated Situation
+```mermaid
+flowchart TD
+    A["FIELD OFFICER<br/>(Cognito Login)"] --> B["Report Landslide<br/>(Incident Reporter)"]
+    B --> C["Upload Photo Evidence<br/>(Presigned S3 Upload)"]
+    C --> D["Amazon S3 Storage<br/>(Forensic Bucket)"]
+    D --> E["Incident Stored in DynamoDB<br/>(ner_incidents Table)"]
+    E --> F["Bedrock Analyzes Incident<br/>(AWS Bedrock AI Service)"]
+    F --> G["Human Verification<br/>(Officer HITL Validation)"]
+    G --> H["GIS Incident Marker<br/>(Leaflet Interactive Map)"]
+    H --> I["Deterministic Route Risk Changes<br/>(NetworkX Dijkstra Solver)"]
+    I --> J["Simulated Fleet Enters Danger Radius<br/>(EventBridge Geofence)"]
+    J --> K["Amazon SNS SOS Dispatch<br/>(Emergency Topic)"]
+    K --> L["Alert Generated<br/>(ner_alerts Table)"]
+    L --> M["Command Center Dashboard<br/>(Commander Room View)"]
 ```
 
 ---
