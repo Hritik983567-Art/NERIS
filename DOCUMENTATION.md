@@ -73,12 +73,12 @@ When field officers operate in zero-connectivity mountain zones, reports are enq
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Officer as Field Officer (Mobile / Offline)
-    participant UI as FieldReporter Component
-    participant IDB as IndexedDB (neris_offline_db)
-    participant Sync as AppContext Sync Worker
-    participant API as FastAPI Backend
-    participant DDB as AWS DynamoDB
+    actor Officer as "Field Officer (Mobile / Offline)"
+    participant UI as "FieldReporter Component"
+    participant IDB as "IndexedDB (neris_offline_db)"
+    participant Sync as "AppContext Sync Worker"
+    participant API as "FastAPI Backend"
+    participant DDB as "AWS DynamoDB"
 
     Officer->>UI: Submit Incident (Draft / Offline)
     UI->>IDB: Enqueue Item (status: "PENDING SYNC")
@@ -158,10 +158,10 @@ Continuous GPS telemetry pings monitor fleet coordinates against active hazard l
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Sim as Telemetry Simulator (telemetry_simulation.py)
-    participant UI as VehicleTracker & Diagnostic Panel
-    participant Engine as Geodesic Proximity Engine
-    participant Alert as Alert Matrix
+    participant Sim as "Telemetry Simulator (telemetry_simulation.py)"
+    participant UI as "VehicleTracker & Diagnostic Panel"
+    participant Engine as "Geodesic Proximity Engine"
+    participant Alert as "Alert Matrix"
 
     Sim->>Sim: Calculate smooth sinusoidal speed, bearing & cold-chain temp
     Sim->>UI: Update Fleets State (Polling interval 2.5s)

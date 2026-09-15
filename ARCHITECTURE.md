@@ -52,13 +52,13 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Officer as Field Officer
-    participant Auth as Amazon Cognito Token Guard
-    participant API as AWS Lambda API Engine
-    participant DDB as Amazon DynamoDB (ner_incidents)
-    participant S3 as Amazon S3 (neris-evidence-photos)
-    participant Alert as Alert Engine (ner_alerts)
-    participant GIS as Interactive GIS Map
+    actor Officer as "Field Officer"
+    participant Auth as "Amazon Cognito Token Guard"
+    participant API as "AWS Lambda API Engine"
+    participant DDB as "Amazon DynamoDB (ner_incidents)"
+    participant S3 as "Amazon S3 (neris-evidence-photos)"
+    participant Alert as "Alert Engine (ner_alerts)"
+    participant GIS as "Interactive GIS Map"
 
     Officer->>API: POST /api/v1/incidents (Incident Data + Photo Payload)
     API->>Auth: Validate Bearer JWT & FIELD_OFFICER Role
@@ -120,11 +120,11 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Sim as Telemetry Simulation Worker
-    participant API as POST /api/v1/telemetry/ping
-    participant DDB as Amazon DynamoDB (ner_fleet)
-    participant Geo as Geodesic Proximity Engine
-    participant UI as Fleet Tracker UI
+    participant Sim as "Telemetry Simulation Worker"
+    participant API as "POST /api/v1/telemetry/ping"
+    participant DDB as "Amazon DynamoDB (ner_fleet)"
+    participant Geo as "Geodesic Proximity Engine"
+    participant UI as "Fleet Tracker UI"
 
     loop Every 2.5 Seconds
         Sim->>API: Send GPS Ping (Lat, Lng, Speed, Bearing, Temp)
@@ -147,11 +147,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Officer as Field Officer (No Cellular Signal)
-    participant IDB as IndexedDB (neris_offline_db)
-    participant Sync as AppContext Sync Worker
-    participant API as POST /api/v1/incidents/batch-sync
-    participant DDB as Amazon DynamoDB
+    actor Officer as "Field Officer (No Cellular Signal)"
+    participant IDB as "IndexedDB (neris_offline_db)"
+    participant Sync as "AppContext Sync Worker"
+    participant API as "POST /api/v1/incidents/batch-sync"
+    participant DDB as "Amazon DynamoDB"
 
     Officer->>IDB: Submit Report -> Enqueue with `localQueueId` & `operation_id`
     Note over Officer,IDB: Network Restored (online event)
